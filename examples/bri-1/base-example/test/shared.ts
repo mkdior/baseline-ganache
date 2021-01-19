@@ -200,14 +200,17 @@ export const shouldBehaveLikeAnInitialWorkgroupOrganization = function () {
       describe('compile', () => {
         before(async () => {
           circuitArtifacts = await this.ctx.app.compileBaselineCircuit();
+					console.log((circuitArtifacts !== undefined));
           assert(circuitArtifacts, 'compiled artifacts should not be null');
         });
 
         it('should output the compiled circuit', async () => {
+					console.log((circuitArtifacts.program !== undefined));
           assert(circuitArtifacts.program, 'artifacts should contain the compiled circuit');
         });
 
         it('should output the ABI of the compiled circuit', async () => {
+					console.log((circuitArtifacts.abi !== undefined));
           assert(circuitArtifacts.abi, 'artifacts should contain the abi');
         });
       });

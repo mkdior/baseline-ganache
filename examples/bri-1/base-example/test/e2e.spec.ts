@@ -94,7 +94,8 @@ describe("baseline", () => {
 			"localhost:8080",
 			networkId,
 			"localhost:8082",
-			"nethermind-ropsten.provide.services:8888",
+			"localhost:4001",
+			//"nethermind-ropsten.provide.services:8888", // RPC
 			"http",
 			null,
 			"baseline workgroup",
@@ -113,7 +114,8 @@ describe("baseline", () => {
 			"localhost:8086",
 			networkId,
 			"localhost:8083",
-			"nethermind-ropsten.provide.services:8888",
+			"localhost:4002",
+			//"nethermind-ropsten.provide.services:8888", // RPC
 			"http",
 			null,
 			"baseline workgroup",
@@ -147,6 +149,7 @@ describe("baseline", () => {
 				const erc1820RegistryContract = await bobApp.requireWorkgroupContract(
 					"erc1820-registry"
 				);
+
 				assert(
 					erc1820RegistryContract,
 					"workgroup ERC1820 registry contract should not be null"
@@ -157,6 +160,7 @@ describe("baseline", () => {
 				const orgRegistryContract = await bobApp.requireWorkgroupContract(
 					"organization-registry"
 				);
+
 				assert(
 					orgRegistryContract,
 					"workgroup organization registry contract should not be null"
@@ -215,11 +219,14 @@ describe("baseline", () => {
 				describe("alice", function () {
 					before(async () => {
 						await bobApp.requireWorkgroupContract("erc1820-registry");
+						console.log("Just required the erc1820");
 						await bobApp.requireWorkgroupContract("organization-registry");
+						console.log("Just required the org-registry");
 						await aliceApp.acceptWorkgroupInvite(
 							inviteToken,
 							bobApp.getWorkgroupContracts()
 						);
+						console.log("Just accepted the workgroup invite;");
 					});
 
 					describe(

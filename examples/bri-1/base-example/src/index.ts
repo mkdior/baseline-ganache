@@ -97,11 +97,14 @@ export class ParticipantStack {
 		dv.config();
 
 		this.contracts = {};
+		// Same contracts structure but for the contracts deployed on Ganache.
 		this.ganacheContracts = {};
 		this.startProtocolSubscriptions();
 
 		if (this.baselineConfig.initiator) {
+			// Setting up state variables for local Ganache accounts.
 			await this.ganacheAccountSetup();
+			// Retrieving and deploying all needed contracts on Ganache.
 			await this.contractSetup();
 
 			console.log("Ganache Contract settings: " + JSON.stringify(this.ganacheContracts, (key, value) => {
@@ -990,16 +993,30 @@ export class ParticipantStack {
 		}
 
 		const contractParams = compilerOutput.contracts['verifier.sol']['Verifier'];
-		await this.deployWorkgroupContract('Verifier', 'verifier', contractParams);
+
+		
+		//await this.deployWorkgroupContract('Verifier', 'verifier', contractParams);
+		// Current verifier contract is simply built from a no-op circuit.
 		await this.requireWorkgroupContract('verifier');
 
-		const shieldAddress = await this.deployWorkgroupShieldContract();
-		const trackedShield = await this.baseline?.track(shieldAddress);
+		//const shieldAddress = await this.deployWorkgroupShieldContract();
+		
+		// TODO::(Hamza) -- Replace this shield contract
+		const shieldAddress = this.ganacheContracts['shield']['address'];
+		// Commit-mgr handles the tracking
+		console.log("Tracking shield through Commit-Mgr");
+		const trackedShield = await this.baseline?.track(shieldAddress).then((v) => {
+			console.log(`baseline.track: ${JSON.stringify(v, undefined, 2)}`);
+			return v;
+		}).catch((e) => console.log(`Shield TRACKING error: ${e}`));
+
 		if (!trackedShield) {
 			console.log('WARNING: failed to track baseline shield contract');
 		}
 
+		console.log("OUT -- ONE");
 		this.baselineCircuitSetupArtifacts = setupArtifacts;
+		console.log("OUT -- TWO");
 		this.workflowIdentifier = this.baselineCircuitSetupArtifacts?.identifier;
 
 		return setupArtifacts;
@@ -1138,7 +1155,7 @@ export class ParticipantStack {
 	async requireWorkgroupContract(type: string): Promise<any> {
 		let contract;
 		let interval;
-
+		// <++>
 		const promises = [] as any;
 		promises.push(new Promise((resolve, reject) => {
 			interval = setInterval(async () => {
@@ -1163,15 +1180,21 @@ export class ParticipantStack {
 			this.baselineConfig?.nchainApiHost,
 		);
 
-		const contracts = await nchain.fetchContracts({
-			type: type,
-		});
+		//const contracts = await nchain.fetchContracts({
+		//	type: type,
+		//});
 
-		if (contracts && contracts.length === 1 && contracts[0]['address'] !== '0x') {
-			const contract = await nchain.fetchContractDetails(contracts[0].id!);
-			this.contracts[type] = contract;
-			return Promise.resolve(contract);
+		console.log("Stubbing fetch_contracts");
+		console.log(type);
+
+		if (this.ganacheContracts[type] && this.ganacheContracts[type]['address'] !== '0x') {
+			//const contract = await nchain.fetchContractDetails(contracts[0].id!);
+			//this.contracts[type] = contract;
+			this.contracts[type] = this.ganacheContracts[type];
+			//return Promise.resolve(contract);
+			return Promise.resolve(this.ganacheContracts[type]);
 		}
+		console.log("@#@#@#@#@#@#@#@#@#@#");
 		return Promise.reject();
 	}
 
