@@ -200,17 +200,14 @@ export const shouldBehaveLikeAnInitialWorkgroupOrganization = function () {
       describe('compile', () => {
         before(async () => {
           circuitArtifacts = await this.ctx.app.compileBaselineCircuit();
-					console.log((circuitArtifacts !== undefined));
           assert(circuitArtifacts, 'compiled artifacts should not be null');
         });
 
         it('should output the compiled circuit', async () => {
-					console.log((circuitArtifacts.program !== undefined));
           assert(circuitArtifacts.program, 'artifacts should contain the compiled circuit');
         });
 
         it('should output the ABI of the compiled circuit', async () => {
-					console.log((circuitArtifacts.abi !== undefined));
           assert(circuitArtifacts.abi, 'artifacts should contain the abi');
         });
       });
@@ -247,12 +244,15 @@ export const shouldBehaveLikeAnInitialWorkgroupOrganization = function () {
           });
 
           it('should deposit the workgroup shield contract on-chain', async () => {
+						console.log(shield);
+						console.log(shield.address);
             assert(shield, 'workgroup shield contract should not be null');
             assert(shield.address, 'workgroup shield contract should have been deployed');
           });
 
           it('should track the workgroup shield in an off-chain merkle tree database', async () => {
-            const trackedShieldContracts = await this.ctx.app.baseline.getTracked();
+            //const trackedShieldContracts = await this.ctx.app.baseline.getTracked();
+						const trackedShieldContracts = await this.ctx.app.getTracked();
             assert(trackedShieldContracts.indexOf(shield.address.toLowerCase()) !== -1, 'workgroup shield contract should have been tracked');
           });
 

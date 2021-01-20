@@ -19,7 +19,8 @@ import {
 	deposit,
 	getBalance,
 } from "../test/utils-comm.js";
-import * as Mong from "mongoose";
+
+import mongoose from "mongoose";
 import * as dv from "dotenv";
 
 // Testing
@@ -102,18 +103,12 @@ export class ParticipantStack {
 		this.startProtocolSubscriptions();
 
 		if (this.baselineConfig.initiator) {
+			// Clear up merkle-store if it exists
+			await this.merkleStoreSetup();
 			// Setting up state variables for local Ganache accounts.
 			await this.ganacheAccountSetup();
 			// Retrieving and deploying all needed contracts on Ganache.
 			await this.contractSetup();
-
-			console.log("Ganache Contract settings: " + JSON.stringify(this.ganacheContracts, (key, value) => {
-				let omit = ['params'];
-
-				if (omit.indexOf(key) === -1) {
-					return value;
-				}
-			}, 2));
 
 			if (this.baselineConfig.workgroup && this.baselineConfig.workgroupToken) {
 				await this.setWorkgroup(this.baselineConfig.workgroup, this.baselineConfig.workgroupToken);
@@ -244,13 +239,14 @@ export class ParticipantStack {
 			"/" +
 			`${process.env.B_DATABASE_NAME}`;
 
-		await Mong.connect(dbUrl, config.mongoose);
+		await mongoose.connect(dbUrl, config.mongoose);
 
-		await Mong.connection.db.listCollections().toArray(async (err, collections) => {
+		await mongoose.connection.db.listCollections().toArray(async (err, collections) => {
 			if (collections.length > 0) {
 				for (var collection of collections) {
 					if (collection.name === 'merkle-trees') {
-						await Mong.connection.db.dropCollection('merkle-trees');
+						console.log(`Found an old merkle-trees collection; delete.`);
+						await mongoose.connection.db.dropCollection('merkle-trees');
 					}
 				}
 			}
@@ -1040,6 +1036,33 @@ export class ParticipantStack {
 		this.workflowIdentifier = this.baselineCircuitSetupArtifacts?.identifier;
 
 		return setupArtifacts;
+	}
+
+	async track(): Promise<any> {
+
+	}
+
+	async getTracked(): Promise<any> {
+		
+		const trackedShield = await this.commitMgrApiBob.post("/jsonrpc").send({
+			jsonrpc: "2.0",
+			method: "baseline_getTracked",
+			params: [],
+			id: 1
+		}).then((v) => {
+			if (v.status !== 200) return false;
+			const parsedResponse: any = () => {
+				try {
+					return JSON.parse(v.text);
+				} catch (error) {
+					console.log(`ERROR while parsing baseline_getTracked response text ${JSON.stringify(error, undefined, 2)}`);
+					return undefined;
+				}
+			};
+			return (parsedResponse()).result
+		});
+		
+		return trackedShield;
 	}
 
 	async deployWorkgroupContract(name: string, type: string, params: any, arvg?: any[]): Promise<any> {

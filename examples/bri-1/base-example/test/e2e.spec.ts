@@ -217,14 +217,11 @@ describe("baseline", () => {
 				describe("alice", function () {
 					before(async () => {
 						await bobApp.requireWorkgroupContract("erc1820-registry");
-						console.log("Just required the erc1820");
 						await bobApp.requireWorkgroupContract("organization-registry");
-						console.log("Just required the org-registry");
 						await aliceApp.acceptWorkgroupInvite(
 							inviteToken,
 							bobApp.getWorkgroupContracts()
 						);
-						console.log("Just accepted the workgroup invite;");
 					});
 
 					describe(
