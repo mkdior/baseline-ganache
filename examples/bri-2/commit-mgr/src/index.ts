@@ -47,6 +47,8 @@ const main = async () => {
         req.socket.remoteAddress,
     };
 
+    logger.info(`Request information -- Context -- ${JSON.stringify(context, undefined, 2)}`);
+
     await rpcServer.call(req.body, context, (err: any, result: any) => {
       if (err) {
         const errorMessage = err.error.data ? `${err.error.message}: ${err.error.data}` : `${err.error.message}`;

@@ -113,7 +113,7 @@ describe("baseline", () => {
 			"localhost:8086",
 			networkId,
 			"localhost:8083",
-			"localhost:4002/jsonrpc",
+			"0.0.0.0:4002/jsonrpc",
 			"http",
 			null,
 			"baseline workgroup",

@@ -274,7 +274,6 @@ export class ParticipantStack {
 
 		let verifierAddress, shieldAddress, erc1820Address, orgRegistryAddress: string;
 
-
 		// Begin Verifier Contract
 		const unsignedVerifierTx: any = {
 			from: sender,
@@ -994,13 +993,13 @@ export class ParticipantStack {
 
 		const contractParams = compilerOutput.contracts['verifier.sol']['Verifier'];
 
-		
+
 		//await this.deployWorkgroupContract('Verifier', 'verifier', contractParams);
 		// Current verifier contract is simply built from a no-op circuit.
 		await this.requireWorkgroupContract('verifier');
 
 		//const shieldAddress = await this.deployWorkgroupShieldContract();
-		
+
 		// TODO::(Hamza) -- Replace this shield contract
 		const shieldAddress = this.ganacheContracts['shield']['address'];
 
@@ -1008,10 +1007,21 @@ export class ParticipantStack {
 		console.log("Tracking shield through Commit-Mgr");
 		console.log("Shield Address we're going to track: " + shieldAddress);
 
-		const trackedShield = await this.baseline?.track(shieldAddress).then((v) => {
-			console.log(`baseline.track: ${JSON.stringify(v, undefined, 2)}`);
-			return v;
-		}).catch((e) => console.log(`Shield TRACKING error: ${e}`));
+		//		Doesn't work for some reason, fix this later, for now manually call.
+		//
+		//		const trackedShield = await this.baseline?.track(shieldAddress).then((v) => {
+		//			console.log(`baseline.track: ${JSON.stringify(v, undefined, 2)}`);
+		//			return v;
+		//		}).catch((e) => console.log(`Shield TRACKING error: ${e}`));
+
+		const trackedShield = await this.commitMgrApiBob.post("/jsonrpc").send({
+			jsonrpc: "2.0",
+			method: "baseline_track",
+			params: [shieldAddress],
+			id: 1
+		}).then((v) => (v.status === 200) ? true : false);
+
+		console.log(`trackedShield status: ${trackedShield}`);
 
 		if (!trackedShield) {
 			console.log('WARNING: failed to track baseline shield contract');
