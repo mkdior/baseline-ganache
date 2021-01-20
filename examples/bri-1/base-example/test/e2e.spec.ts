@@ -94,8 +94,7 @@ describe("baseline", () => {
 			"localhost:8080",
 			networkId,
 			"localhost:8082",
-			"localhost:4001",
-			//"nethermind-ropsten.provide.services:8888", // RPC
+			"localhost:4001/jsonrpc",
 			"http",
 			null,
 			"baseline workgroup",
@@ -114,8 +113,7 @@ describe("baseline", () => {
 			"localhost:8086",
 			networkId,
 			"localhost:8083",
-			"localhost:4002",
-			//"nethermind-ropsten.provide.services:8888", // RPC
+			"localhost:4002/jsonrpc",
 			"http",
 			null,
 			"baseline workgroup",

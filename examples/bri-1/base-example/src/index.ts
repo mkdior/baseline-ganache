@@ -1003,8 +1003,11 @@ export class ParticipantStack {
 		
 		// TODO::(Hamza) -- Replace this shield contract
 		const shieldAddress = this.ganacheContracts['shield']['address'];
+
 		// Commit-mgr handles the tracking
 		console.log("Tracking shield through Commit-Mgr");
+		console.log("Shield Address we're going to track: " + shieldAddress);
+
 		const trackedShield = await this.baseline?.track(shieldAddress).then((v) => {
 			console.log(`baseline.track: ${JSON.stringify(v, undefined, 2)}`);
 			return v;
@@ -1014,9 +1017,7 @@ export class ParticipantStack {
 			console.log('WARNING: failed to track baseline shield contract');
 		}
 
-		console.log("OUT -- ONE");
 		this.baselineCircuitSetupArtifacts = setupArtifacts;
-		console.log("OUT -- TWO");
 		this.workflowIdentifier = this.baselineCircuitSetupArtifacts?.identifier;
 
 		return setupArtifacts;
