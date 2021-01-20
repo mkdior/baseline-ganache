@@ -1019,9 +1019,18 @@ export class ParticipantStack {
 			method: "baseline_track",
 			params: [shieldAddress],
 			id: 1
-		}).then((v) => (v.status === 200) ? true : false);
-
-		console.log(`trackedShield status: ${trackedShield}`);
+		}).then((v) => {
+			if (v.status !== 200) return false;
+			const parsedResponse: any = () => {
+				try {
+					return JSON.parse(v.text);
+				} catch (error) {
+					console.log(`ERROR while parsing baseline_track response text ${JSON.stringify(error, undefined, 2)}`);
+					return undefined;
+				}
+			};
+			return (parsedResponse()).result
+		});
 
 		if (!trackedShield) {
 			console.log('WARNING: failed to track baseline shield contract');
