@@ -182,6 +182,14 @@ export class ParticipantStack {
 		return this.contracts;
 	}
 
+	getWorkgroupContractGanache(type: string): any {
+		return this.ganacheContracts[type];
+	}
+
+	getWorkgroupContractsGanache(): any[] {
+		return this.ganacheContracts;
+	}
+
 	getWorkgroupCounterparties(): string[] {
 		return this.workgroupCounterparties;
 	}
