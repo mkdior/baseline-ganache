@@ -41,7 +41,7 @@ export const shouldBehaveLikeAWorkgroupOrganization = function () {
       });
 
       it('should track the workgroup shield in an off-chain merkle tree database', async () => {
-        //const trackedShieldContracts = await this.ctx.app.baseline.getTracked();
+        //const trackedShieldContracts = await this.ctx.app.baseline?.getTracked();
         const trackedShieldContracts = await this.ctx.app.getTracked();
         assert(trackedShieldContracts.indexOf(shield.address.toLowerCase()) !== -1, 'workgroup shield contract should have been tracked');
       });
@@ -250,7 +250,7 @@ export const shouldBehaveLikeAnInitialWorkgroupOrganization = function () {
           });
 
           it('should track the workgroup shield in an off-chain merkle tree database', async () => {
-            //const trackedShieldContracts = await this.ctx.app.baseline.getTracked();
+            //const trackedShieldContracts = await this.ctx.app.baseline?.getTracked();
 						const trackedShieldContracts = await this.ctx.app.getTracked();
             assert(trackedShieldContracts.indexOf(shield.address.toLowerCase()) !== -1, 'workgroup shield contract should have been tracked');
           });
