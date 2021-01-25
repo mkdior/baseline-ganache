@@ -1,7 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IOrganization extends Document {
-	_id: string;
 	createdAt: Date;
 	name: string;
 	userId: string;
@@ -12,7 +11,6 @@ export interface IOrganization extends Document {
 };
 
 export interface IUser extends Document {
-	_id: string;
 	createdAt: Date;
 	email: string;
 	firstName: string;
@@ -28,12 +26,11 @@ export interface IUser extends Document {
 };
 
 export interface IWorkgroup extends Document {
-	_id: string;
 	networkId: string;
 	type: string;
 	orgInfoSet: {
-		organization: IOrganization,
-			users: [IUser]
+		organization: IOrganization['_id'],
+			users: [IUser['_id']]
 	};
 	config: {
 		webhookSecret: string
@@ -45,7 +42,6 @@ export interface IWorkgroup extends Document {
 };
 
 const organizationSchema = new Schema({
-	_id: String,
 	createdAt: {
 		type: Date,
 		default: Date.now
@@ -59,7 +55,6 @@ const organizationSchema = new Schema({
 });
 
 const userSchema = new Schema({
-	_id: String,
 	createdAt: {
 		type: Date,
 		default: Date.now
@@ -82,12 +77,11 @@ const userSchema = new Schema({
 });
 
 const workgroupSchema = new Schema({
-	_id: String,
 	networkId: String,
 	type: String,
 	orgInfoSet: {
-		organization: organizationSchema,
-		users: [userSchema]
+		organization: Schema.Types.ObjectId,
+		users: [Schema.Types.ObjectId]
 	},
 	config: {
 		webhook_secret: String
@@ -101,9 +95,8 @@ const workgroupSchema = new Schema({
 	description: String,
 });
 
-export default mongoose.model<IOrganization>('organization', organizationSchema);
-//export default {
-//	org: mongoose.model<IOrganization>('organization', organizationSchema), 
-//	user: mongoose.model<IUser>('user', userSchema), 
-//	workgroup: mongoose.model<IWorkgroup>('workgroup', workgroupSchema)
-//};
+export default {
+	OrganizationModel :  mongoose.model<IOrganization>('organization', organizationSchema),
+	UserModel :  mongoose.model<IUser>('user', userSchema),
+	WorkgroupModel : mongoose.model<IWorkgroup>('workgroup', workgroupSchema)
+}

@@ -27,6 +27,12 @@ import * as dv from "dotenv";
 import { NonceManager } from "@ethersproject/experimental";
 import { resolve } from 'dns';
 
+// Models
+// IdentSchemas.OrganizationModel
+// IdentSchemas.UserModel
+// IdentScemas.WorkgroupModel
+import IdentSchemas from '../../../bri-2/commit-mgr/src/db/models/Ident';
+
 // const baselineDocumentCircuitPath = '../../../lib/circuits/createAgreement.zok';
 const baselineDocumentCircuitPath = '../../../lib/circuits/noopAgreement.zok';
 const baselineProtocolMessageSubject = 'baseline.inbound';
