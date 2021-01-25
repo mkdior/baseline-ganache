@@ -31,7 +31,7 @@ import { resolve } from 'dns';
 // IdentSchemas.OrganizationModel
 // IdentSchemas.UserModel
 // IdentScemas.WorkgroupModel
-import IdentSchemas from '../../../bri-2/commit-mgr/src/db/models/Ident';
+import IdentSchemas, { IUser, IWorkgroup, IOrganization }from '../../../bri-2/commit-mgr/src/db/models/Ident';
 
 // const baselineDocumentCircuitPath = '../../../lib/circuits/createAgreement.zok';
 const baselineDocumentCircuitPath = '../../../lib/circuits/noopAgreement.zok';
