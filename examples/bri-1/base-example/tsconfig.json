@@ -1,6 +1,7 @@
 {
   "include": [
-    "./src/**/*"
+    "./src/**/*",
+		"../../bri-2/commit-mgr/src/**/*.ts"
   ],
   "compilerOptions": {
     "allowJs": false,
