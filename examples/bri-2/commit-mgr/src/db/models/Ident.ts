@@ -41,7 +41,7 @@ export interface IWorkgroup extends Document {
 	description: string;
 };
 
-export const organizationSchema = new Schema({
+export const organizationSchema: Schema = new Schema({
 	createdAt: {
 		type: Date,
 		default: Date.now
@@ -54,7 +54,7 @@ export const organizationSchema = new Schema({
 	}
 });
 
-export const userSchema = new Schema({
+export const userSchema: Schema = new Schema({
 	createdAt: {
 		type: Date,
 		default: Date.now
@@ -76,7 +76,7 @@ export const userSchema = new Schema({
 	},
 });
 
-export const workgroupSchema = new Schema({
+export const workgroupSchema: Schema = new Schema({
 	networkId: String,
 	type: String,
 	orgInfoSet: {
