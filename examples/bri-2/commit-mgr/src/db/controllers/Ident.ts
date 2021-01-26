@@ -2,7 +2,7 @@ import Ident, { IUser, IWorkgroup, IOrganization } from '../models/Ident';
 import { CreateQuery, UpdateQuery, DeleteQuery } from 'mongoose';
 
 
-async function CreateUser({
+export async function CreateUser({
 	createdAt,
 	email,
 	firstName,
@@ -11,11 +11,23 @@ async function CreateUser({
 	permissions,
 	privacyPolicyAgreedAt,
 	termsOfServiceAgreedAt
-}: CreateQuery<IUser>){
-	throw new Error('Not implemented!');
+}: CreateQuery<IUser>): Promise<IUser>{
+	return Ident.UserModel.create({
+		createdAt,
+		email,
+		firstName,
+		lastName,
+		name,
+		permissions,
+		privacyPolicyAgreedAt,
+		termsOfServiceAgreedAt
+	})
+		.then((user: IUser) => {return user;})
+		.catch((e: Error) => {throw e;});
+	
 }
 
-async function CreateWorkgroup({
+export async function CreateWorkgroup({
 	networkId,
 	type,
 	orgInfoSet,
@@ -24,42 +36,57 @@ async function CreateWorkgroup({
 	name,
 	userId,
 	description
-}: CreateQuery<IWorkgroup>){
-	throw new Error('Not implemented!');
+}: CreateQuery<IWorkgroup>): Promise<IWorkgroup>{
+	Ident.WorkgroupModel.create({
+		networkId,
+		type,
+		orgInfoSet,
+		config,
+		createdAt,
+		name,
+		userId,
+		description
+	}).then((workgroup: IWorkgroup) => {return workgroup;}).catch((e: Error) => {throw e;});
 }
 
-async function CreateOrganization({
+export async function CreateOrganization({
 	createdAt,
 	name,
 	userId,
 	description,
 	metadata
-}: CreateQuery<IOrganization>){
-	throw new Error('Not implemented!');
+}: CreateQuery<IOrganization>): Promise<IOrganization>{
+	Ident.OrganizationModel.create({
+		createdAt,
+		name,
+		userId,
+		description,
+		metadata
+	}).then((organization: IOrganization) => {return organization;}).catch((e: Error) => {throw e});
 }
 
 // Update
-async function UpdateUser(){ 
+export async function UpdateUser(){ 
 	throw new Error('Not implemented!'); 
 }
 
-async function UpdateWorkgroup(){
+export async function UpdateWorkgroup(){
 	throw new Error('Not implemented!');
 }
 
-async function UpdateOrganization(){
+export async function UpdateOrganization(){
 	throw new Error('Not implemented!');
 }
 
 // Delete
-async function DeleteUser(){
+export async function DeleteUser(){
 	throw new Error('Not implemented!');
 }
 
-async function DeleteWorkgroup(){
+export async function DeleteWorkgroup(){
 	throw new Error('Not implemented!');
 }
 
-async function DeleteOrganization(){
+export async function DeleteOrganization(){
 	throw new Error('Not implemented!');
 }
