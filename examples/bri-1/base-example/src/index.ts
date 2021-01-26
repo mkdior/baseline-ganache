@@ -385,6 +385,21 @@ export class ParticipantStack {
 
 		let identConnector = new IdentWrapper(identConnection.connection);
 
+		let lorg = await identConnector.createOrganization(
+			{
+				createdAt: (new Date()).toString(), 
+				name: "testing org", 
+				userId: "0x0", 
+				description: "desc", 
+				metadata: {
+					messaging_endpoint: "test.nast.me"
+				}
+			}
+		);
+
+		console.log(JSON.stringify(lorg, undefined, 2));
+		console.log(typeof identConnection);
+
 		await merkleConnection.connection.db.listCollections().toArray(async (err, collections) => {
 			if (collections.length > 0) {
 				for (var collection of collections) {
