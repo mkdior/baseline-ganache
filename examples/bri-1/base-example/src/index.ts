@@ -27,12 +27,7 @@ import * as dv from "dotenv";
 import { NonceManager } from "@ethersproject/experimental";
 import { resolve } from 'dns';
 
-// Models
-// IdentSchemas.OrganizationModel
-// IdentSchemas.UserModel
-// IdentScemas.WorkgroupModel
-import IdentSchemas, { IUser, IWorkgroup, IOrganization } from '../../../bri-2/commit-mgr/src/db/models/Ident';
-import * as IdentL from '../../../bri-2/commit-mgr/src/db/controllers/Ident';
+import { IdentWrapper } from '../../../bri-2/commit-mgr/src/db/controllers/Ident';
 
 // const baselineDocumentCircuitPath = '../../../lib/circuits/createAgreement.zok';
 const baselineDocumentCircuitPath = '../../../lib/circuits/noopAgreement.zok';
@@ -375,9 +370,22 @@ export class ParticipantStack {
 			"/" +
 			`${process.env.B_DATABASE_NAME}`;
 
-		await mongoose.connect(dbUrl, config.mongoose);
+		const identUrl =
+			"mongodb://" +
+			`${process.env.B_DATABASE_USER}` +
+			":" +
+			`${process.env.B_DATABASE_PASSWORD}` +
+			"@" +
+			`${process.env.B_DATABASE_HOST}` +
+			"/" +
+			`ident`;
 
-		await mongoose.connection.db.listCollections().toArray(async (err, collections) => {
+		let merkleConnection = await mongoose.connect(dbUrl, config.mongoose);
+		let identConnection = await mongoose.connect(dbUrl, config.mongoose);
+
+		let identConnector = new IdentWrapper(identConnection.connection);
+
+		await merkleConnection.connection.db.listCollections().toArray(async (err, collections) => {
 			if (collections.length > 0) {
 				for (var collection of collections) {
 					if (collection.name === 'merkle-trees') {

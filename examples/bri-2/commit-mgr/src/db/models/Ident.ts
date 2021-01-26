@@ -41,7 +41,7 @@ export interface IWorkgroup extends Document {
 	description: string;
 };
 
-const organizationSchema = new Schema({
+export const organizationSchema = new Schema({
 	createdAt: {
 		type: Date,
 		default: Date.now
@@ -54,7 +54,7 @@ const organizationSchema = new Schema({
 	}
 });
 
-const userSchema = new Schema({
+export const userSchema = new Schema({
 	createdAt: {
 		type: Date,
 		default: Date.now
@@ -76,7 +76,7 @@ const userSchema = new Schema({
 	},
 });
 
-const workgroupSchema = new Schema({
+export const workgroupSchema = new Schema({
 	networkId: String,
 	type: String,
 	orgInfoSet: {
@@ -94,9 +94,3 @@ const workgroupSchema = new Schema({
 	userId: String,
 	description: String,
 });
-
-export default {
-	OrganizationModel :  mongoose.model<IOrganization>('organization', organizationSchema),
-	UserModel :  mongoose.model<IUser>('user', userSchema),
-	WorkgroupModel : mongoose.model<IWorkgroup>('workgroup', workgroupSchema)
-}
