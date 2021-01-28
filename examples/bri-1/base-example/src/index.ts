@@ -22,6 +22,7 @@ import {
 
 import mongoose from "mongoose";
 import * as dv from "dotenv";
+import uuid4 from "uuid4";
 
 // Testing
 import { NonceManager } from "@ethersproject/experimental";
@@ -393,11 +394,11 @@ export class ParticipantStack {
 		let lorg = await identConnector.createOrganization(
 			{
 				createdAt: (new Date()).toString(),
-				name: "testing org",
-				userId: "0x0",
-				description: "desc",
+				name: "Bob Organization",
+				userId: uuid4(),
+				description: "None",
 				metadata: {
-					messaging_endpoint: "test.nast.me"
+					messaging_endpoint: "bob.nast.me"
 				}
 			}
 		);

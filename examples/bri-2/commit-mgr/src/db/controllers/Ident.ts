@@ -14,9 +14,9 @@ export class IdentWrapper {
 	constructor(c: Connection) {
 		this.IdentConnection = c;
 		this.IdentTables = {	
-			OrganizationModel :  c.model<IOrganization>('organization', organizationSchema),
-			UserModel :  c.model<IUser>('user', userSchema),
-			WorkgroupModel : c.model<IWorkgroup>('workgroup', workgroupSchema)
+			OrganizationModel :  c.model<IOrganization>('organization', (organizationSchema as any)),
+			UserModel :  c.model<IUser>('user', (userSchema as any)),
+			WorkgroupModel : c.model<IWorkgroup>('workgroup', (workgroupSchema as any))
 		};
 	}
 
