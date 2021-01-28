@@ -361,7 +361,7 @@ export class ParticipantStack {
 		};
 
 		//TODO::(Hamza) Initialise Alice's DB too.
-		const dbUrl =
+		const dbCommit =
 			"mongodb://" +
 			`${process.env.B_DATABASE_USER}` +
 			":" +
@@ -371,37 +371,15 @@ export class ParticipantStack {
 			"/" +
 			`${process.env.B_DATABASE_NAME}`;
 
-		const identUrl =
-			"mongodb://" +
-			`${process.env.B_DATABASE_USER}` +
-			":" +
-			`${process.env.B_DATABASE_PASSWORD}` +
-			"@" +
-			`${process.env.B_DATABASE_HOST}` +
-			"/" +
-			`ident`;
+		const dbIdent = dbCommit.replace(new RegExp(/\b\/[a-zA-Z]*\b/), "/ident");
+		console.log(dbIdent);
 
-		let merkleConnection = await mongoose.connect(dbUrl, config.mongoose);
-		let identConnection = await mongoose.connect(dbUrl, config.mongoose);
+		let merkleConnection = await mongoose.connect(dbCommit, config.mongoose);
+		let identConnection = await mongoose.connect(dbIdent, config.mongoose);
 
 		// Clear out all previous collections if there are any
-
 		await this.collectionDropper(['merkle-trees'], merkleConnection.connection);
 		await this.collectionDropper(['organization', 'user', 'workgroup'], identConnection.connection);
-
-		let identConnector = new IdentWrapper(identConnection.connection);
-
-		let lorg = await identConnector.createOrganization(
-			{
-				createdAt: (new Date()).toString(),
-				name: "Bob Organization",
-				userId: uuid4(),
-				description: "None",
-				metadata: {
-					messaging_endpoint: "bob.nast.me"
-				}
-			}
-		);
 	}
 
 	private async collectionDropper(names: string[], con: mongoose.Connection): Promise<any> {
