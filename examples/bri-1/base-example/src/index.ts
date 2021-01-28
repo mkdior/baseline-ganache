@@ -1,15 +1,57 @@
-import { IBaselineRPC, IBlockchainService, IRegistry, IVault, MerkleTreeNode, baselineServiceFactory, baselineProviderProvide } from '@baseline-protocol/api';
-import { IMessagingService, messagingProviderNats, messagingServiceFactory } from '@baseline-protocol/messaging';
-import { IZKSnarkCircuitProvider, IZKSnarkCompilationArtifacts, IZKSnarkTrustedSetupArtifacts, zkSnarkCircuitProviderServiceFactory, zkSnarkCircuitProviderServiceZokrates, Element, elementify, rndHex, concatenateThenHash } from '@baseline-protocol/privacy';
-import { Message as ProtocolMessage, Opcode, PayloadType, marshalProtocolMessage, unmarshalProtocolMessage } from '@baseline-protocol/types';
-import { Application as Workgroup, Invite, Vault as ProvideVault, Organization, Token, Key as VaultKey } from '@provide/types';
-import { Capabilities, Ident, NChain, Vault, capabilitiesFactory, nchainClientFactory } from 'provide-js';
-import { readFileSync } from 'fs';
-import { compile as solidityCompile } from 'solc';
-import * as jwt from 'jsonwebtoken';
-import * as log from 'loglevel';
-import { sha256 } from 'js-sha256';
-import { AuthService } from 'ts-natsutil';
+import {
+	IBaselineRPC,
+	IBlockchainService,
+	IRegistry,
+	IVault,
+	MerkleTreeNode,
+	baselineServiceFactory,
+	baselineProviderProvide,
+} from "@baseline-protocol/api";
+import {
+	IMessagingService,
+	messagingProviderNats,
+	messagingServiceFactory,
+} from "@baseline-protocol/messaging";
+import {
+	IZKSnarkCircuitProvider,
+	IZKSnarkCompilationArtifacts,
+	IZKSnarkTrustedSetupArtifacts,
+	zkSnarkCircuitProviderServiceFactory,
+	zkSnarkCircuitProviderServiceZokrates,
+	Element,
+	elementify,
+	rndHex,
+	concatenateThenHash,
+} from "@baseline-protocol/privacy";
+import {
+	Message as ProtocolMessage,
+	Opcode,
+	PayloadType,
+	marshalProtocolMessage,
+	unmarshalProtocolMessage,
+} from "@baseline-protocol/types";
+import {
+	Application as Workgroup,
+	Invite,
+	Vault as ProvideVault,
+	Organization,
+	Token,
+	Key as VaultKey,
+} from "@provide/types";
+import {
+	Capabilities,
+	Ident,
+	NChain,
+	Vault,
+	capabilitiesFactory,
+	nchainClientFactory,
+} from "provide-js";
+import { readFileSync } from "fs";
+import { compile as solidityCompile } from "solc";
+import * as jwt from "jsonwebtoken";
+import * as log from "loglevel";
+import { sha256 } from "js-sha256";
+import { AuthService } from "ts-natsutil";
 import { ethers as Eth } from "ethers";
 import {
 	web3provider,
@@ -26,13 +68,13 @@ import uuid4 from "uuid4";
 
 // Testing
 import { NonceManager } from "@ethersproject/experimental";
-import { resolve } from 'dns';
+import { resolve } from "dns";
 
-import { IdentWrapper } from '../../../bri-2/commit-mgr/src/db/controllers/Ident';
+import { IdentWrapper } from "../../../bri-2/commit-mgr/src/db/controllers/Ident";
 
 // const baselineDocumentCircuitPath = '../../../lib/circuits/createAgreement.zok';
-const baselineDocumentCircuitPath = '../../../lib/circuits/noopAgreement.zok';
-const baselineProtocolMessageSubject = 'baseline.inbound';
+const baselineDocumentCircuitPath = "../../../lib/circuits/noopAgreement.zok";
+const baselineProtocolMessageSubject = "baseline.inbound";
 
 const zokratesImportResolver = (location, path) => {
 	let zokpath = `../../../lib/circuits/${path}`;
@@ -165,9 +207,7 @@ const zokratesImportResolver = (location, path) => {
 						*/
 //#endregion
 
-
 export class ParticipantStack {
-
 	private baseline?: IBaselineRPC & IBlockchainService & IRegistry & IVault;
 	private baselineCircuitArtifacts?: IZKSnarkCompilationArtifacts;
 	private baselineCircuitSetupArtifacts?: IZKSnarkTrustedSetupArtifacts;
@@ -185,7 +225,6 @@ export class ParticipantStack {
 	private contracts: any;
 	private ganacheContracts: any;
 	private zk?: IZKSnarkCircuitProvider;
-
 
 	private org?: any;
 	private workgroup?: any;
@@ -206,14 +245,25 @@ export class ParticipantStack {
 
 	async init() {
 		if (this.initialized) {
-			throw new Error(`already initialized participant stack: ${this.org.name}`);
+			throw new Error(
+				`already initialized participant stack: ${this.org.name}`
+			);
 		}
 
-		this.baseline = await baselineServiceFactory(baselineProviderProvide, this.baselineConfig);
-		this.nats = await messagingServiceFactory(messagingProviderNats, this.natsConfig);
-		this.zk = await zkSnarkCircuitProviderServiceFactory(zkSnarkCircuitProviderServiceZokrates, {
-			importResolver: zokratesImportResolver,
-		});
+		this.baseline = await baselineServiceFactory(
+			baselineProviderProvide,
+			this.baselineConfig
+		);
+		this.nats = await messagingServiceFactory(
+			messagingProviderNats,
+			this.natsConfig
+		);
+		this.zk = await zkSnarkCircuitProviderServiceFactory(
+			zkSnarkCircuitProviderServiceZokrates,
+			{
+				importResolver: zokratesImportResolver,
+			}
+		);
 
 		if (this.natsConfig?.natsBearerTokens) {
 			this.natsBearerTokens = this.natsConfig.natsBearerTokens;
@@ -235,12 +285,18 @@ export class ParticipantStack {
 			await this.contractSetup();
 
 			if (this.baselineConfig.workgroup && this.baselineConfig.workgroupToken) {
-				await this.setWorkgroup(this.baselineConfig.workgroup, this.baselineConfig.workgroupToken);
+				await this.setWorkgroup(
+					this.baselineConfig.workgroup,
+					this.baselineConfig.workgroupToken
+				);
 			} else if (this.baselineConfig.workgroupName) {
 				await this.createWorkgroup(this.baselineConfig.workgroupName);
 			}
 
-			await this.registerOrganization(this.baselineConfig.orgName, this.natsConfig.natsServers[0]);
+			await this.registerOrganization(
+				this.baselineConfig.orgName,
+				this.natsConfig.natsServers[0]
+			);
 		}
 
 		this.initialized = true;
@@ -254,9 +310,11 @@ export class ParticipantStack {
 		return this.baselineConfig;
 	}
 
-	getBaselineService(): IBaselineRPC & IBlockchainService & IRegistry & IVault | undefined {
-		return this.baseline;
-	}
+	getBaselineService():
+	| (IBaselineRPC & IBlockchainService & IRegistry & IVault)
+		| undefined {
+			return this.baseline;
+		}
 
 	getMessagingConfig(): any | undefined {
 		return this.natsConfig;
@@ -320,8 +378,8 @@ export class ParticipantStack {
 
 	getGanacheKeys(): { [key: string]: string[] } {
 		return {
-			"commitAccount": this.commitAccount,
-			"commitAccounts": this.commitAccounts
+			commitAccount: this.commitAccount,
+			commitAccounts: this.commitAccounts,
 		};
 	}
 
@@ -340,7 +398,7 @@ export class ParticipantStack {
 
 		this.commitAccount = [process.env.WALLET_PUBLIC_KEY];
 		this.commitAccounts = res.body.result;
-	};
+	}
 
 	private async merkleStoreSetup() {
 		const config = {
@@ -371,23 +429,34 @@ export class ParticipantStack {
 			"/" +
 			`${process.env.B_DATABASE_NAME}`;
 
-		// Replace database name then remove the username/password. If 
+		// Replace database name then remove the username/password. If
 		// sourcing credentials from admin db leave the last replace commented.
-		let dbIdent = (dbCommit.replace(new RegExp(/\b\/[a-zA-Z]*\b/), "/ident")) + "?authSource=admin";//.replace(new RegExp(/\b[a-zA-Z]*:[a-zA-Z0-9]*@\b/), "");
-		
+		let dbIdent =
+			dbCommit.replace(new RegExp(/\b\/[a-zA-Z]*\b/), "/ident") +
+			"?authSource=admin"; //.replace(new RegExp(/\b[a-zA-Z]*:[a-zA-Z0-9]*@\b/), "");
+
 		// See https://github.com/Automattic/mongoose/issues/9335
 		let merkleConnection = await mongoose.connect(dbCommit, config.mongoose);
-		let identConnection = await mongoose.createConnection(dbIdent, config.mongoose);
+		let identConnection = await mongoose.createConnection(
+			dbIdent,
+			config.mongoose
+		);
 
 		let temp = new IdentWrapper(identConnection);
 
 		// Clear out all previous collections if there are any
-		await this.collectionDropper(['merkle-trees'], merkleConnection.connection);
-		await this.collectionDropper(['organization', 'user', 'workgroup'], identConnection);
+		await this.collectionDropper(["merkle-trees"], merkleConnection.connection);
+		await this.collectionDropper(
+			["organization", "user", "workgroup"],
+			identConnection
+		);
 	}
 
-	private async collectionDropper(names: string[], con: mongoose.Connection): Promise<any> {
-		for(var name of names) {
+	private async collectionDropper(
+		names: string[],
+		con: mongoose.Connection
+	): Promise<any> {
+		for (var name of names) {
 			await con.db.listCollections().toArray(async (err, collections) => {
 				if (collections && collections.length > 0) {
 					for (var collection of collections) {
@@ -402,11 +471,24 @@ export class ParticipantStack {
 	}
 
 	private async contractSetup(): Promise<any> {
-
-		const verifierContract = JSON.parse(readFileSync("../../bri-2/contracts/artifacts/VerifierNoop.json").toString()); // #1
-		const shieldContract = JSON.parse(readFileSync("../../bri-2/contracts/artifacts/Shield.json").toString()); // #2
-		const erc1820Contract = JSON.parse(readFileSync("../../bri-2/contracts/artifacts/ERC1820Registry.json").toString()); // #3
-		const orgRegistryContract = JSON.parse(readFileSync("../../bri-2/contracts/artifacts/OrgRegistry.json").toString()); // #4
+		const verifierContract = JSON.parse(
+			readFileSync(
+				"../../bri-2/contracts/artifacts/VerifierNoop.json"
+			).toString()
+		); // #1
+		const shieldContract = JSON.parse(
+			readFileSync("../../bri-2/contracts/artifacts/Shield.json").toString()
+		); // #2
+		const erc1820Contract = JSON.parse(
+			readFileSync(
+				"../../bri-2/contracts/artifacts/ERC1820Registry.json"
+			).toString()
+		); // #3
+		const orgRegistryContract = JSON.parse(
+			readFileSync(
+				"../../bri-2/contracts/artifacts/OrgRegistry.json"
+			).toString()
+		); // #4
 
 		const url = "http://0.0.0.0:8545";
 		const provider = new Eth.providers.JsonRpcProvider(url);
@@ -416,21 +498,29 @@ export class ParticipantStack {
 		const treeHeight = 2;
 		const sender = (await provider.listAccounts())[2];
 
-		let verifierAddress, shieldAddress, erc1820Address, orgRegistryAddress: string;
+		let verifierAddress,
+		shieldAddress,
+		erc1820Address,
+		orgRegistryAddress: string;
 
 		// Begin Verifier Contract
 		const unsignedVerifierTx: any = {
 			from: sender,
 			data: verifierContract.bytecode,
-			nonce: managedSigner.getTransactionCount()
+			nonce: managedSigner.getTransactionCount(),
 		};
 
 		let gasEstimate = await managedSigner.estimateGas(unsignedVerifierTx);
 		unsignedVerifierTx.gasLimit = Math.ceil(Number(gasEstimate) * 1.1);
 
-		let verifierTxHash = await managedSigner.sendTransaction(unsignedVerifierTx)
-		.then((tx) => { return tx.hash })
-		.catch((err) => console.log(`(Error 1): ${JSON.stringify(err, undefined, 2)}`));
+		let verifierTxHash = await managedSigner
+		.sendTransaction(unsignedVerifierTx)
+		.then((tx) => {
+			return tx.hash;
+		})
+		.catch((err) =>
+			console.log(`(Error 1): ${JSON.stringify(err, undefined, 2)}`)
+		);
 
 		const verifierReceipt = await this.commitMgrApiBob.post("/jsonrpc").send({
 			jsonrpc: "2.0",
@@ -445,27 +535,36 @@ export class ParticipantStack {
 		console.log(`Address of the verifier contract: ${verifierAddress}`);
 
 		// Begin Shield Contract
-		const encodedShieldParams = abiCoder.encode(["address", "uint"], [verifierAddress, treeHeight]);
-		const shieldBytecodeWithParams = shieldContract.bytecode + encodedShieldParams.slice(2).toString();
+		const encodedShieldParams = abiCoder.encode(
+			["address", "uint"],
+			[verifierAddress, treeHeight]
+		);
+		const shieldBytecodeWithParams =
+		shieldContract.bytecode + encodedShieldParams.slice(2).toString();
 
 		const unsignedShieldTx: any = {
 			from: sender,
 			data: shieldBytecodeWithParams,
-			nonce: await managedSigner.getTransactionCount()
+			nonce: await managedSigner.getTransactionCount(),
 		};
 
 		gasEstimate = await managedSigner.estimateGas(unsignedShieldTx);
 		unsignedShieldTx.gasLimit = Math.ceil(Number(gasEstimate) * 1.1);
 
-		let shieldTxHash = await managedSigner.sendTransaction(unsignedShieldTx)
-		.then((tx) => { return tx.hash; })
-		.catch((error) => console.log(`error(1): ${JSON.stringify(error, undefined, 2)}`));;
+		let shieldTxHash = await managedSigner
+		.sendTransaction(unsignedShieldTx)
+		.then((tx) => {
+			return tx.hash;
+		})
+		.catch((error) =>
+			console.log(`error(1): ${JSON.stringify(error, undefined, 2)}`)
+		);
 
 		const shieldReceipt = await this.commitMgrApiBob.post("/jsonrpc").send({
 			jsonrpc: "2.0",
 			method: "eth_getTransactionReceipt",
 			params: [shieldTxHash],
-			id: 1
+			id: 1,
 		});
 
 		const shieldReceiptDetails = shieldReceipt.body.result;
@@ -477,21 +576,26 @@ export class ParticipantStack {
 		const unsigned1820Tx: any = {
 			from: sender,
 			data: erc1820Contract.bytecode,
-			nonce: await managedSigner.getTransactionCount()
+			nonce: await managedSigner.getTransactionCount(),
 		};
 
 		gasEstimate = await managedSigner.estimateGas(unsigned1820Tx);
 		unsigned1820Tx.gasLimit = Math.ceil(Number(gasEstimate) * 1.1);
 
-		let erc1820TxHash = await managedSigner.sendTransaction(unsigned1820Tx)
-		.then((tx) => { return tx.hash; })
-		.catch((error) => console.log(`error(1): ${JSON.stringify(error, undefined, 2)}`));;
+		let erc1820TxHash = await managedSigner
+		.sendTransaction(unsigned1820Tx)
+		.then((tx) => {
+			return tx.hash;
+		})
+		.catch((error) =>
+			console.log(`error(1): ${JSON.stringify(error, undefined, 2)}`)
+		);
 
 		const erc1820Receipt = await this.commitMgrApiBob.post("/jsonrpc").send({
 			jsonrpc: "2.0",
 			method: "eth_getTransactionReceipt",
 			params: [erc1820TxHash],
-			id: 1
+			id: 1,
 		});
 
 		const erc1820ReceiptDetails = erc1820Receipt.body.result;
@@ -501,26 +605,32 @@ export class ParticipantStack {
 
 		// Begin ORG-Registry contract
 		const encodedOrgParams = abiCoder.encode(["address"], [erc1820Address]);
-		const orgBytecodeWithParams = orgRegistryContract.bytecode + encodedShieldParams.slice(2).toString();
+		const orgBytecodeWithParams =
+		orgRegistryContract.bytecode + encodedShieldParams.slice(2).toString();
 
 		const unsignedOrgTx: any = {
 			from: sender,
 			data: orgBytecodeWithParams,
-			nonce: await managedSigner.getTransactionCount()
+			nonce: await managedSigner.getTransactionCount(),
 		};
 
 		gasEstimate = await managedSigner.estimateGas(unsignedOrgTx);
 		unsignedOrgTx.gasLimit = Math.ceil(Number(gasEstimate) * 1.1);
 
-		let orgTxHash = await managedSigner.sendTransaction(unsignedOrgTx)
-		.then((tx) => { return tx.hash; })
-		.catch((error) => console.log(`error(1): ${JSON.stringify(error, undefined, 2)}`));;
+		let orgTxHash = await managedSigner
+		.sendTransaction(unsignedOrgTx)
+		.then((tx) => {
+			return tx.hash;
+		})
+		.catch((error) =>
+			console.log(`error(1): ${JSON.stringify(error, undefined, 2)}`)
+		);
 
 		const orgReceipt = await this.commitMgrApiBob.post("/jsonrpc").send({
 			jsonrpc: "2.0",
 			method: "eth_getTransactionReceipt",
 			params: [orgTxHash],
-			id: 1
+			id: 1,
 		});
 
 		const orgReceiptDetails = orgReceipt.body.result;
@@ -528,46 +638,45 @@ export class ParticipantStack {
 
 		console.log(`Address of the ORG-Registry contract: ${orgRegistryAddress}`);
 
-
 		this.ganacheContracts = {
-			'erc1820-registry': {
+			"erc1820-registry": {
 				address: erc1820Address,
-				name: 'ERC1820Registry',
+				name: "ERC1820Registry",
 				network_id: 0,
 				params: {
-					compiled_artifact: erc1820Contract
+					compiled_artifact: erc1820Contract,
 				},
-				type: 'erc1820-registry'
+				type: "erc1820-registry",
 			},
-			'organization-registry': {
+			"organization-registry": {
 				address: orgRegistryAddress,
-				name: 'OrgRegistry',
+				name: "OrgRegistry",
 				network_id: 0,
 				params: {
-					compiled_artifacts: orgRegistryContract
+					compiled_artifacts: orgRegistryContract,
 				},
-				type: 'organization-registry'
+				type: "organization-registry",
 			},
-			'shield': {
+			shield: {
 				address: shieldAddress,
-				name: 'Shield',
+				name: "Shield",
 				network_id: 0,
 				params: {
-					compiled_artifacts: shieldContract
+					compiled_artifacts: shieldContract,
 				},
-				type: 'shield'
+				type: "shield",
 			},
-			'verifier': {
+			verifier: {
 				address: verifierAddress,
-				name: 'Verifier',
+				name: "Verifier",
 				network_id: 0,
 				params: {
-					compiled_artifacts: verifierContract
+					compiled_artifacts: verifierContract,
 				},
-				type: 'verifier'
-			}
+				type: "verifier",
+			},
 		};
-	};
+	}
 
 	private async dispatchProtocolMessage(msg: ProtocolMessage): Promise<any> {
 		if (msg.opcode === Opcode.Baseline) {
@@ -593,78 +702,127 @@ export class ParticipantStack {
 					console.log(`Checking payload`);
 					console.log(`${JSON.stringify(payload, undefined, 2)}`);
 
-					payload.result = await this.generateProof('preimage', payload);
+					payload.result = await this.generateProof("preimage", payload);
 
-					const signature = (await this.signMessage(vault.id!, this.babyJubJub?.id!, payload.result.proof.proof)).signature;
+					const signature = (
+						await this.signMessage(
+							vault.id!,
+							this.babyJubJub?.id!,
+							payload.result.proof.proof
+						)
+					).signature;
 					payload.signatures = [signature];
-					this.workgroupCounterparties.forEach(async recipient => {
+					this.workgroupCounterparties.forEach(async (recipient) => {
 						this.sendProtocolMessage(msg.sender, Opcode.Baseline, payload);
 					});
 				} else if (payload.signatures.length < workflowSignatories) {
 					if (payload.sibling_path && payload.sibling_path.length > 0) {
 						// perform off-chain verification to make sure this is a legal state transition
 						const root = payload.sibling_path[0];
-						const verified = this.baseline?.verify(this.contracts['shield'].address, payload.leaf, root, payload.sibling_path);
+						const verified = this.baseline?.verify(
+							this.contracts["shield"].address,
+							payload.leaf,
+							root,
+							payload.sibling_path
+						);
 						if (!verified) {
-							console.log('WARNING-- off-chain verification of proposed state transition failed...');
-							this.workgroupCounterparties.forEach(async recipient => {
-								this.sendProtocolMessage(recipient, Opcode.Baseline, { err: 'verification failed' });
+							console.log(
+								"WARNING-- off-chain verification of proposed state transition failed..."
+							);
+							this.workgroupCounterparties.forEach(async (recipient) => {
+								this.sendProtocolMessage(recipient, Opcode.Baseline, {
+									err: "verification failed",
+								});
 							});
-							return Promise.reject('failed to verify');
+							return Promise.reject("failed to verify");
 						}
 					}
 
 					// sign state transition
-					const signature = (await this.signMessage(vault.id!, this.babyJubJub?.id!, payload.hash)).signature;
+					const signature = (
+						await this.signMessage(
+							vault.id!,
+							this.babyJubJub?.id!,
+							payload.hash
+						)
+					).signature;
 					payload.signatures.push(signature);
-					this.workgroupCounterparties.forEach(async recipient => {
+					this.workgroupCounterparties.forEach(async (recipient) => {
 						this.sendProtocolMessage(recipient, Opcode.Baseline, payload);
 					});
 				} else {
 					// create state transition commitment
-					payload.result = await this.generateProof('modify_state', JSON.parse(msg.payload.toString()));
+					payload.result = await this.generateProof(
+						"modify_state",
+						JSON.parse(msg.payload.toString())
+					);
 					const publicInputs = []; // FIXME
-					const value = ''; // FIXME
+					const value = ""; // FIXME
 
 					const resp = await this.baseline?.verifyAndPush(
 						msg.sender,
-						this.contracts['shield'].address,
+						this.contracts["shield"].address,
 						payload.result.proof.proof,
 						publicInputs,
-						value,
+						value
 					);
 
 					const leaf = resp!.commitment as MerkleTreeNode;
 
 					if (leaf) {
 						console.log(`inserted leaf... ${leaf}`);
-						payload.sibling_path = (await this.baseline!.getProof(msg.shield, leaf.location())).map(node => node.location());
+						payload.sibling_path = (
+							await this.baseline!.getProof(msg.shield, leaf.location())
+						).map((node) => node.location());
 						payload.sibling_path?.push(leaf.index);
-						this.workgroupCounterparties.forEach(async recipient => {
-							await this.sendProtocolMessage(recipient, Opcode.Baseline, payload);
+						this.workgroupCounterparties.forEach(async (recipient) => {
+							await this.sendProtocolMessage(
+								recipient,
+								Opcode.Baseline,
+								payload
+							);
 						});
 					} else {
-						return Promise.reject('failed to insert leaf');
+						return Promise.reject("failed to insert leaf");
 					}
 				}
 			} else if (payload.signature) {
-				console.log(`NOOP!!! received signature in BLINE protocol message: ${payload.signature}`);
+				console.log(
+					`NOOP!!! received signature in BLINE protocol message: ${payload.signature}`
+				);
 			}
 		} else if (msg.opcode === Opcode.Join) {
 			const payload = JSON.parse(msg.payload.toString());
-			const messagingEndpoint = await this.resolveMessagingEndpoint(payload.address);
-			if (!messagingEndpoint || !payload.address || !payload.authorized_bearer_token) {
-				return Promise.reject('failed to handle baseline JOIN protocol message');
+			const messagingEndpoint = await this.resolveMessagingEndpoint(
+				payload.address
+			);
+			if (
+				!messagingEndpoint ||
+				!payload.address ||
+				!payload.authorized_bearer_token
+			) {
+				return Promise.reject(
+					"failed to handle baseline JOIN protocol message"
+				);
 			}
 			this.workgroupCounterparties.push(payload.address);
-			this.natsBearerTokens[messagingEndpoint] = payload.authorized_bearer_token;
+			this.natsBearerTokens[messagingEndpoint] =
+				payload.authorized_bearer_token;
 		}
 	}
 
 	// HACK!! workgroup/contracts should be synced via protocol
-	async acceptWorkgroupInvite(inviteToken: string, contracts: any): Promise<void> {
-		if (this.workgroup || this.workgroupToken || this.org || this.baselineConfig.initiator) {
-			return Promise.reject('failed to accept workgroup invite');
+	async acceptWorkgroupInvite(
+		inviteToken: string,
+		contracts: any
+	): Promise<void> {
+		if (
+			this.workgroup ||
+			this.workgroupToken ||
+			this.org ||
+			this.baselineConfig.initiator
+		) {
+			return Promise.reject("failed to accept workgroup invite");
 		}
 
 		const invite = jwt.decode(inviteToken) as { [key: string]: any };
@@ -672,66 +830,85 @@ export class ParticipantStack {
 		await this.createWorkgroup(this.baselineConfig.workgroupName);
 
 		this.contracts = {
-			'erc1820-registry': {
+			"erc1820-registry": {
 				address: invite.prvd.data.params.erc1820_registry_contract_address,
-				name: 'ERC1820Registry',
+				name: "ERC1820Registry",
 				network_id: this.baselineConfig?.networkId,
 				params: {
-					compiled_artifact: contracts['erc1820-registry'].params?.compiled_artifact
+					compiled_artifact:
+					contracts["erc1820-registry"].params?.compiled_artifact,
 				},
-				type: 'erc1820-registry',
+				type: "erc1820-registry",
 			},
-			'organization-registry': {
+			"organization-registry": {
 				address: invite.prvd.data.params.organization_registry_contract_address,
-				name: 'OrgRegistry',
+				name: "OrgRegistry",
 				network_id: this.baselineConfig?.networkId,
 				params: {
-					compiled_artifact: contracts['organization-registry'].params?.compiled_artifact
+					compiled_artifact:
+					contracts["organization-registry"].params?.compiled_artifact,
 				},
-				type: 'organization-registry',
+				type: "organization-registry",
 			},
-			'shield': {
+			shield: {
 				address: invite.prvd.data.params.shield_contract_address,
-				name: 'Shield',
+				name: "Shield",
 				network_id: this.baselineConfig?.networkId,
 				params: {
-					compiled_artifact: contracts['shield'].params?.compiled_artifact
+					compiled_artifact: contracts["shield"].params?.compiled_artifact,
 				},
-				type: 'shield',
+				type: "shield",
 			},
-			'verifier': {
+			verifier: {
 				address: invite.prvd.data.params.verifier_contract_address,
-				name: 'Verifier',
+				name: "Verifier",
 				network_id: this.baselineConfig?.networkId,
 				params: {
-					compiled_artifact: contracts['verifier'].params?.compiled_artifact
+					compiled_artifact: contracts["verifier"].params?.compiled_artifact,
 				},
-				type: 'verifier',
+				type: "verifier",
 			},
 		};
 
 		const nchain = nchainClientFactory(
 			this.workgroupToken,
 			this.baselineConfig?.nchainApiScheme,
-			this.baselineConfig?.nchainApiHost,
+			this.baselineConfig?.nchainApiHost
 		);
 
-		this.contracts['erc1820-registry'] = await nchain.createContract(this.contracts['erc1820-registry']);
-		this.contracts['organization-registry'] = await nchain.createContract(this.contracts['organization-registry']);
-		this.contracts['shield'] = await nchain.createContract(this.contracts['shield']);
-		this.contracts['verifier'] = await nchain.createContract(this.contracts['verifier']);
+		this.contracts["erc1820-registry"] = await nchain.createContract(
+			this.contracts["erc1820-registry"]
+		);
+		this.contracts["organization-registry"] = await nchain.createContract(
+			this.contracts["organization-registry"]
+		);
+		this.contracts["shield"] = await nchain.createContract(
+			this.contracts["shield"]
+		);
+		this.contracts["verifier"] = await nchain.createContract(
+			this.contracts["verifier"]
+		);
 
-		const counterpartyAddr = invite.prvd.data.params.invitor_organization_address;
+		const counterpartyAddr =
+		invite.prvd.data.params.invitor_organization_address;
 		this.workgroupCounterparties.push(counterpartyAddr);
 
-		const messagingEndpoint = await this.resolveMessagingEndpoint(counterpartyAddr);
-		this.natsBearerTokens[messagingEndpoint] = invite.prvd.data.params.authorized_bearer_token;
+		const messagingEndpoint = await this.resolveMessagingEndpoint(
+			counterpartyAddr
+		);
+		this.natsBearerTokens[messagingEndpoint] =
+		invite.prvd.data.params.authorized_bearer_token;
 		this.workflowIdentifier = invite.prvd.data.params.workflow_identifier;
 
-		await this.baseline?.track(invite.prvd.data.params.shield_contract_address).catch((err) => { });
+		await this.baseline
+		?.track(invite.prvd.data.params.shield_contract_address)
+		.catch((err) => {});
 
 		// Register organization on-chain.
-		await this.registerOrganization(this.baselineConfig.orgName, this.natsConfig.natsServers[0]);
+		await this.registerOrganization(
+			this.baselineConfig.orgName,
+			this.natsConfig.natsServers[0]
+		);
 		// Retrieve on-chain organization
 
 		await this.requireOrganization(await this.resolveOrganizationAddress());
@@ -750,7 +927,6 @@ export class ParticipantStack {
 	}
 
 	async generateProof(type: string, msg: any): Promise<any> {
-
 		console.log(`Checking msg -> generateProof`);
 		console.log(`${JSON.stringify(msg, undefined, 2)}`);
 
@@ -766,31 +942,37 @@ export class ParticipantStack {
 		console.log(`generating ${type} proof...\n`, msg);
 
 		switch (type) {
-			case 'preimage': // create agreement
+			case "preimage": // create agreement
 				const preimage = concatenateThenHash({
-					erc20ContractAddress: this.marshalCircuitArg(this.contracts['erc1820-registry'].address),
+					erc20ContractAddress: this.marshalCircuitArg(
+						this.contracts["erc1820-registry"].address
+					),
 					senderPublicKey: this.marshalCircuitArg(senderZkPublicKey),
 					name: this.marshalCircuitArg(msg.doc.name),
 					url: this.marshalCircuitArg(msg.doc.url),
 					hash: this.marshalCircuitArg(msg.hash),
 				});
-				console.log(`generating state genesis with preimage: ${preimage}; salt: ${salt}`);
+				console.log(
+					`generating state genesis with preimage: ${preimage}; salt: ${salt}`
+				);
 				commitment = concatenateThenHash(preimage, salt);
 				break;
 
-			case 'modify_state': // modify commitment state, nullify if applicable, etc.
+			case "modify_state": // modify commitment state, nullify if applicable, etc.
 				const _commitment = concatenateThenHash({
 					senderPublicKey: this.marshalCircuitArg(senderZkPublicKey),
 					name: this.marshalCircuitArg(msg.doc.name),
 					url: this.marshalCircuitArg(msg.doc.url),
 					hash: this.marshalCircuitArg(msg.hash),
 				});
-				console.log(`generating state transition commitment with calculated delta: ${_commitment}; root: ${root}, salt: ${salt}`);
+				console.log(
+					`generating state transition commitment with calculated delta: ${_commitment}; root: ${root}, salt: ${salt}`
+				);
 				commitment = concatenateThenHash(root, _commitment, salt);
 				break;
 
 			default:
-				throw new Error('invalid proof type');
+				throw new Error("invalid proof type");
 		}
 
 		const args = [
@@ -812,13 +994,14 @@ export class ParticipantStack {
 				],
 				agreementName: this.marshalCircuitArg(msg.doc.name),
 				agreementUrl: this.marshalCircuitArg(msg.doc.url),
-			}
+			},
 		];
 
 		const proof = await this.zk?.generateProof(
 			this.baselineCircuitArtifacts?.program,
-			(await this.zk?.computeWitness(this.baselineCircuitArtifacts!, args)).witness,
-			this.baselineCircuitSetupArtifacts?.keypair?.pk,
+			(await this.zk?.computeWitness(this.baselineCircuitArtifacts!, args))
+			.witness,
+			this.baselineCircuitSetupArtifacts?.keypair?.pk
 		);
 
 		return {
@@ -834,9 +1017,11 @@ export class ParticipantStack {
 			return Promise.reject(`organization not resolved: ${addr}`);
 		}
 
-		const messagingEndpoint = org['config'].messaging_endpoint;
+		const messagingEndpoint = org["config"].messaging_endpoint;
 		if (!messagingEndpoint) {
-			return Promise.reject(`organization messaging endpoint not resolved for recipient: ${addr}`);
+			return Promise.reject(
+				`organization messaging endpoint not resolved for recipient: ${addr}`
+			);
 		}
 
 		return messagingEndpoint;
@@ -846,7 +1031,9 @@ export class ParticipantStack {
 	async resolveNatsBearerToken(addr: string): Promise<string> {
 		const endpoint = await this.resolveMessagingEndpoint(addr);
 		if (!endpoint) {
-			return Promise.reject(`failed to resolve messaging endpoint for participant: ${addr}`);
+			return Promise.reject(
+				`failed to resolve messaging endpoint for participant: ${addr}`
+			);
 		}
 		return this.natsBearerTokens[endpoint];
 	}
@@ -855,22 +1042,29 @@ export class ParticipantStack {
 	async sendProtocolMessage(
 		recipient: string,
 		opcode: Opcode,
-		msg: any,
+		msg: any
 	): Promise<any> {
 		const messagingEndpoint = await this.resolveMessagingEndpoint(recipient);
 		if (!messagingEndpoint) {
-			return Promise.reject(`protocol message not sent; organization messaging endpoint not resolved for recipient: ${recipient}`);
+			return Promise.reject(
+				`protocol message not sent; organization messaging endpoint not resolved for recipient: ${recipient}`
+			);
 		}
 
 		const bearerToken = this.natsBearerTokens[messagingEndpoint];
 		if (!bearerToken) {
-			return Promise.reject(`protocol message not sent; no bearer authorization cached for endpoint of recipient: ${recipient}`);
+			return Promise.reject(
+				`protocol message not sent; no bearer authorization cached for endpoint of recipient: ${recipient}`
+			);
 		}
 
-		const recipientNatsConn = await messagingServiceFactory(messagingProviderNats, {
-			bearerToken: bearerToken,
-			natsServers: [messagingEndpoint],
-		});
+		const recipientNatsConn = await messagingServiceFactory(
+			messagingProviderNats,
+			{
+				bearerToken: bearerToken,
+				natsServers: [messagingEndpoint],
+			}
+		);
 		await recipientNatsConn.connect();
 
 		if (msg.id && !this.workflowRecords[msg.id]) {
@@ -882,13 +1076,16 @@ export class ParticipantStack {
 			await this.protocolMessageFactory(
 				opcode,
 				recipient,
-				this.contracts['shield'].address,
+				this.contracts["shield"].address,
 				this.workflowIdentifier!,
-				Buffer.from(JSON.stringify(msg)),
-			),
+				Buffer.from(JSON.stringify(msg))
+			)
 		);
 
-		const result = recipientNatsConn.publish(baselineProtocolMessageSubject, wiremsg);
+		const result = recipientNatsConn.publish(
+			baselineProtocolMessageSubject,
+			wiremsg
+		);
 		this.protocolMessagesTx++;
 		recipientNatsConn.disconnect();
 		return result;
@@ -896,7 +1093,9 @@ export class ParticipantStack {
 
 	async createWorkgroup(name: string): Promise<Workgroup> {
 		if (this.workgroup) {
-			return Promise.reject(`workgroup not created; instance is associated with workgroup: ${this.workgroup.name}`);
+			return Promise.reject(
+				`workgroup not created; instance is associated with workgroup: ${this.workgroup.name}`
+			);
 		}
 
 		this.workgroup = await this.baseline?.createWorkgroup({
@@ -919,44 +1118,52 @@ export class ParticipantStack {
 
 	private async initWorkgroup(): Promise<void> {
 		if (!this.workgroup) {
-			return Promise.reject('failed to init workgroup');
+			return Promise.reject("failed to init workgroup");
 		}
 
 		this.capabilities = capabilitiesFactory();
 		await this.requireCapabilities();
 
-		const registryContracts = JSON.parse(JSON.stringify(this.capabilities?.getBaselineRegistryContracts()));
+		const registryContracts = JSON.parse(
+			JSON.stringify(this.capabilities?.getBaselineRegistryContracts())
+		);
 		const contractParams = registryContracts[2]; // "shuttle" launch contract
 		// ^^ FIXME -- load from disk -- this is a wrapper to deploy the OrgRegistry contract
 
-		await this.deployWorkgroupContract('Shuttle', 'registry', contractParams);
-		await this.requireWorkgroupContract('organization-registry');
+		await this.deployWorkgroupContract("Shuttle", "registry", contractParams);
+		await this.requireWorkgroupContract("organization-registry");
 	}
 
 	async registerWorkgroupOrganization(): Promise<Organization> {
 		if (!this.workgroup || !this.workgroupToken || !this.org) {
-			return Promise.reject('failed to register workgroup organization');
+			return Promise.reject("failed to register workgroup organization");
 		}
 
 		// This is where the organization must be created for on-chain; this due to the fact
 		// that prior to this call we create all the keys necessary for on-chain registration.
 
-
 		// Either that or in the prior step we create the actual organization, register it and
 		// in here we just dump it into the actual workgroup.
 
-		return (await Ident.clientFactory(
-			this.workgroupToken,
-			this.baselineConfig?.identApiScheme,
-			this.baselineConfig?.identApiHost,
-		)).createApplicationOrganization(this.workgroup.id, {
+		return (
+			await Ident.clientFactory(
+				this.workgroupToken,
+				this.baselineConfig?.identApiScheme,
+				this.baselineConfig?.identApiHost
+			)
+		).createApplicationOrganization(this.workgroup.id, {
 			organization_id: this.org.id,
 		});
 	}
 
 	async setWorkgroup(workgroup: any, workgroupToken: any): Promise<void> {
-		if (!workgroup || !workgroupToken || !this.workgroup || this.workgroupToken) {
-			return Promise.reject('failed to set workgroup');
+		if (
+			!workgroup ||
+			!workgroupToken ||
+			!this.workgroup ||
+			this.workgroupToken
+		) {
+			return Promise.reject("failed to set workgroup");
 		}
 
 		this.workgroup = workgroup;
@@ -967,21 +1174,21 @@ export class ParticipantStack {
 
 	async fetchWorkgroupOrganizations(): Promise<Organization[]> {
 		if (!this.workgroup || !this.workgroupToken) {
-			return Promise.reject('failed to fetch workgroup organizations');
+			return Promise.reject("failed to fetch workgroup organizations");
 		}
 
-		return (await Ident.clientFactory(
+		return await Ident.clientFactory(
 			this.workgroupToken,
 			this.baselineConfig?.identApiScheme,
-			this.baselineConfig?.identApiHost,
-		).fetchApplicationOrganizations(this.workgroup.id, {}));
+			this.baselineConfig?.identApiHost
+		).fetchApplicationOrganizations(this.workgroup.id, {});
 	}
 
 	async createOrgToken(): Promise<Token> {
 		return await Ident.clientFactory(
 			this.baselineConfig?.token,
 			this.baselineConfig?.identApiScheme,
-			this.baselineConfig?.identApiHost,
+			this.baselineConfig?.identApiHost
 		).createToken({
 			organization_id: this.org.id,
 		});
@@ -991,7 +1198,7 @@ export class ParticipantStack {
 		return await Ident.clientFactory(
 			this.baselineConfig?.token,
 			this.baselineConfig?.identApiScheme,
-			this.baselineConfig?.identApiHost,
+			this.baselineConfig?.identApiHost
 		).createToken({
 			application_id: this.workgroup.id,
 		});
@@ -1002,18 +1209,20 @@ export class ParticipantStack {
 		if (keys && keys.length >= 3) {
 			return keys[2].address; // HACK!
 		}
-		return Promise.reject('failed to resolve organization address');
+		return Promise.reject("failed to resolve organization address");
 	}
 
 	async fetchOrganization(address: string): Promise<Organization> {
 		//<++>
 		// fetchOrganization == On-chain registration??
-		const orgRegistryContract = await this.requireWorkgroupContract('organization-registry');
+		const orgRegistryContract = await this.requireWorkgroupContract(
+			"organization-registry"
+		);
 
 		const nchain = nchainClientFactory(
 			this.workgroupToken,
 			this.baselineConfig?.nchainApiScheme,
-			this.baselineConfig?.nchainApiHost,
+			this.baselineConfig?.nchainApiHost
 		);
 		// https://docs.provide.services/api/nchain/signing/accounts#create-account
 		// Signer
@@ -1034,13 +1243,17 @@ export class ParticipantStack {
 
 		const resp = await this.g_retrieveOrganization(address);
 
-		if (resp && resp['response'] && resp['response'][0] !== '0x0000000000000000000000000000000000000000') {
+		if (
+			resp &&
+			resp["response"] &&
+			resp["response"][0] !== "0x0000000000000000000000000000000000000000"
+		) {
 			const org = {} as Organization;
-			org.name = resp['response'][1].toString();
-			org['address'] = resp['response'][0];
-			org['config'] = JSON.parse(atob(resp['response'][5]));
-			org['config']['messaging_endpoint'] = atob(resp['response'][2]);
-			org['config']['zk_public_key'] = atob(resp['response'][4]);
+			org.name = resp["response"][1].toString();
+			org["address"] = resp["response"][0];
+			org["config"] = JSON.parse(atob(resp["response"][5]));
+			org["config"]["messaging_endpoint"] = atob(resp["response"][2]);
+			org["config"]["zk_public_key"] = atob(resp["response"][4]);
 			return Promise.resolve(org);
 		}
 
@@ -1050,28 +1263,33 @@ export class ParticipantStack {
 	async fetchVaults(): Promise<ProvideVault[]> {
 		const orgToken = await this.createOrgToken();
 		const token = orgToken.accessToken || orgToken.token;
-		return (await Vault.clientFactory(
+		return await Vault.clientFactory(
 			token!,
 			this.baselineConfig.vaultApiScheme!,
-			this.baselineConfig.vaultApiHost!,
-		).fetchVaults({}));
+			this.baselineConfig.vaultApiHost!
+		).fetchVaults({});
 	}
 
-	async createVaultKey(vaultId: string, spec: string, type?: string, usage?: string): Promise<VaultKey> {
+	async createVaultKey(
+		vaultId: string,
+		spec: string,
+		type?: string,
+		usage?: string
+	): Promise<VaultKey> {
 		const orgToken = await this.createOrgToken();
 		const token = orgToken.accessToken || orgToken.token;
 		const vault = Vault.clientFactory(
 			token!,
 			this.baselineConfig?.vaultApiScheme,
-			this.baselineConfig?.vaultApiHost,
+			this.baselineConfig?.vaultApiHost
 		);
-		return (await vault.createVaultKey(vaultId, {
-			'type': type || 'asymmetric',
-			'usage': usage || 'sign/verify',
-			'spec': spec,
-			'name': `${this.org.name} ${spec} keypair`,
-			'description': `${this.org.name} ${spec} keypair`,
-		}));
+		return await vault.createVaultKey(vaultId, {
+			type: type || "asymmetric",
+			usage: usage || "sign/verify",
+			spec: spec,
+			name: `${this.org.name} ${spec} keypair`,
+			description: `${this.org.name} ${spec} keypair`,
+		});
 	}
 
 	async requireVault(token?: string): Promise<ProvideVault> {
@@ -1084,19 +1302,21 @@ export class ParticipantStack {
 
 		let interval;
 		const promises = [] as any;
-		promises.push(new Promise((resolve, reject) => {
-			interval = setInterval(async () => {
-				const vaults = await Vault.clientFactory(
-					tkn!,
-					this.baselineConfig.vaultApiScheme!,
-					this.baselineConfig.vaultApiHost!,
-				).fetchVaults({});
-				if (vaults && vaults.length > 0) {
-					vault = vaults[0];
-					resolve();
-				}
-			}, 2500);
-		}));
+		promises.push(
+			new Promise((resolve, reject) => {
+				interval = setInterval(async () => {
+					const vaults = await Vault.clientFactory(
+						tkn!,
+						this.baselineConfig.vaultApiScheme!,
+						this.baselineConfig.vaultApiHost!
+					).fetchVaults({});
+					if (vaults && vaults.length > 0) {
+						vault = vaults[0];
+						resolve();
+					}
+				}, 2500);
+			})
+		);
 
 		await Promise.all(promises);
 		clearInterval(interval);
@@ -1105,24 +1325,36 @@ export class ParticipantStack {
 		return vault;
 	}
 
-	async signMessage(vaultId: string, keyId: string, message: string): Promise<any> {
+	async signMessage(
+		vaultId: string,
+		keyId: string,
+		message: string
+	): Promise<any> {
 		const orgToken = await this.createOrgToken();
 		const token = orgToken.accessToken || orgToken.token;
-		const vault = Vault.clientFactory(token!, this.baselineConfig?.vaultApiScheme, this.baselineConfig?.vaultApiHost);
-		return (await vault.signMessage(vaultId, keyId, message));
+		const vault = Vault.clientFactory(
+			token!,
+			this.baselineConfig?.vaultApiScheme,
+			this.baselineConfig?.vaultApiHost
+		);
+		return await vault.signMessage(vaultId, keyId, message);
 	}
 
 	async fetchKeys(): Promise<any> {
 		const orgToken = await this.createOrgToken();
 		const token = orgToken.accessToken || orgToken.token;
-		const vault = Vault.clientFactory(token!, this.baselineConfig?.vaultApiScheme, this.baselineConfig?.vaultApiHost);
+		const vault = Vault.clientFactory(
+			token!,
+			this.baselineConfig?.vaultApiScheme,
+			this.baselineConfig?.vaultApiHost
+		);
 		const vlt = await this.requireVault(token!);
-		return (await vault.fetchVaultKeys(vlt.id!, {}));
+		return await vault.fetchVaultKeys(vlt.id!, {});
 	}
 
 	async compileBaselineCircuit(): Promise<any> {
 		const src = readFileSync(baselineDocumentCircuitPath).toString();
-		this.baselineCircuitArtifacts = await this.zk?.compile(src, 'main');
+		this.baselineCircuitArtifacts = await this.zk?.compile(src, "main");
 		return this.baselineCircuitArtifacts;
 	}
 
@@ -1132,37 +1364,45 @@ export class ParticipantStack {
 
 		// perform trusted setup and deploy verifier/shield contract
 		const setupArtifacts = await this.zk?.setup(this.baselineCircuitArtifacts);
-		const compilerOutput = JSON.parse(solidityCompile(JSON.stringify({
-			language: 'Solidity',
-			sources: {
-				'verifier.sol': {
-					content: setupArtifacts?.verifierSource?.replace(/\^0.6.1/g, '^0.7.3').replace(/view/g, ''),
-				},
-			},
-			settings: {
-				outputSelection: {
-					'*': {
-						'*': ['*'],
+		const compilerOutput = JSON.parse(
+			solidityCompile(
+				JSON.stringify({
+					language: "Solidity",
+					sources: {
+						"verifier.sol": {
+							content: setupArtifacts?.verifierSource
+							?.replace(/\^0.6.1/g, "^0.7.3")
+							.replace(/view/g, ""),
+						},
 					},
-				}
-			},
-		})));
+					settings: {
+						outputSelection: {
+							"*": {
+								"*": ["*"],
+							},
+						},
+					},
+				})
+			)
+		);
 
-		if (!compilerOutput.contracts || !compilerOutput.contracts['verifier.sol']) {
-			throw new Error('verifier contract compilation failed');
+		if (
+			!compilerOutput.contracts ||
+			!compilerOutput.contracts["verifier.sol"]
+		) {
+			throw new Error("verifier contract compilation failed");
 		}
 
-		const contractParams = compilerOutput.contracts['verifier.sol']['Verifier'];
-
+		const contractParams = compilerOutput.contracts["verifier.sol"]["Verifier"];
 
 		//await this.deployWorkgroupContract('Verifier', 'verifier', contractParams);
 		// Current verifier contract is simply built from a no-op circuit.
-		await this.requireWorkgroupContract('verifier');
+		await this.requireWorkgroupContract("verifier");
 
 		//const shieldAddress = await this.deployWorkgroupShieldContract();
 
 		// TODO::(Hamza) -- Replace this shield contract
-		const shieldAddress = this.ganacheContracts['shield']['address'];
+		const shieldAddress = this.ganacheContracts["shield"]["address"];
 
 		// Commit-mgr handles the tracking
 		console.log("Tracking shield through Commit-Mgr");
@@ -1175,26 +1415,35 @@ export class ParticipantStack {
 		//			return v;
 		//		}).catch((e) => console.log(`Shield TRACKING error: ${e}`));
 
-		const trackedShield = await this.commitMgrApiBob.post("/jsonrpc").send({
+		const trackedShield = await this.commitMgrApiBob
+		.post("/jsonrpc")
+		.send({
 			jsonrpc: "2.0",
 			method: "baseline_track",
 			params: [shieldAddress],
-			id: 1
-		}).then((v) => {
+			id: 1,
+		})
+		.then((v) => {
 			if (v.status !== 200) return false;
 			const parsedResponse: any = () => {
 				try {
 					return JSON.parse(v.text);
 				} catch (error) {
-					console.log(`ERROR while parsing baseline_track response text ${JSON.stringify(error, undefined, 2)}`);
+					console.log(
+						`ERROR while parsing baseline_track response text ${JSON.stringify(
+							error,
+							undefined,
+							2
+						)}`
+					);
 					return undefined;
 				}
 			};
-			return (parsedResponse()).result
+			return parsedResponse().result;
 		});
 
 		if (!trackedShield) {
-			console.log('WARNING: failed to track baseline shield contract');
+			console.log("WARNING: failed to track baseline shield contract");
 		}
 
 		this.baselineCircuitSetupArtifacts = setupArtifacts;
@@ -1203,56 +1452,68 @@ export class ParticipantStack {
 		return setupArtifacts;
 	}
 
-	async track(): Promise<any> {
-
-	}
+	async track(): Promise<any> {}
 
 	async getTracked(): Promise<any> {
-
-		const trackedShield = await this.commitMgrApiBob.post("/jsonrpc").send({
+		const trackedShield = await this.commitMgrApiBob
+		.post("/jsonrpc")
+		.send({
 			jsonrpc: "2.0",
 			method: "baseline_getTracked",
 			params: [],
-			id: 1
-		}).then((v) => {
+			id: 1,
+		})
+		.then((v) => {
 			if (v.status !== 200) return false;
 			const parsedResponse: any = () => {
 				try {
 					return JSON.parse(v.text);
 				} catch (error) {
-					console.log(`ERROR while parsing baseline_getTracked response text ${JSON.stringify(error, undefined, 2)}`);
+					console.log(
+						`ERROR while parsing baseline_getTracked response text ${JSON.stringify(
+							error,
+							undefined,
+							2
+						)}`
+					);
 					return undefined;
 				}
 			};
-			return (parsedResponse()).result
+			return parsedResponse().result;
 		});
 
 		return trackedShield;
 	}
 
-	async deployWorkgroupContract(name: string, type: string, params: any, arvg?: any[]): Promise<any> {
+	async deployWorkgroupContract(
+		name: string,
+		type: string,
+		params: any,
+		arvg?: any[]
+	): Promise<any> {
 		if (!this.workgroupToken) {
-			return Promise.reject('failed to deploy workgroup contract');
+			return Promise.reject("failed to deploy workgroup contract");
 		}
 
-		if (!params.bytecode && params.evm) { // HACK
+		if (!params.bytecode && params.evm) {
+			// HACK
 			params.bytecode = `0x${params.evm.bytecode.object}`;
 		}
 
 		const nchain = nchainClientFactory(
 			this.workgroupToken,
 			this.baselineConfig?.nchainApiScheme,
-			this.baselineConfig?.nchainApiHost,
+			this.baselineConfig?.nchainApiHost
 		);
 
-		const signerResp = (await nchain.createAccount({
+		const signerResp = await nchain.createAccount({
 			network_id: this.baselineConfig?.networkId,
-		}));
+		});
 
 		const resp = await nchain.createContract({
-			address: '0x',
+			address: "0x",
 			params: {
-				account_id: signerResp['id'],
+				account_id: signerResp["id"],
 				compiled_artifact: params,
 				// network: 'kovan',
 				argv: arvg || [],
@@ -1271,15 +1532,22 @@ export class ParticipantStack {
 	}
 
 	async deployWorkgroupShieldContract(): Promise<any> {
-		const verifierContract = await this.requireWorkgroupContract('verifier');
-		const registryContracts = JSON.parse(JSON.stringify(this.capabilities?.getBaselineRegistryContracts()));
+		const verifierContract = await this.requireWorkgroupContract("verifier");
+		const registryContracts = JSON.parse(
+			JSON.stringify(this.capabilities?.getBaselineRegistryContracts())
+		);
 		const contractParams = registryContracts[3]; // "shuttle circle" factory contract
 
-		const argv = ['MerkleTreeSHA Shield', verifierContract.address, 32];
+		const argv = ["MerkleTreeSHA Shield", verifierContract.address, 32];
 
 		// deploy EYBlockchain's MerkleTreeSHA contract (see https://github.com/EYBlockchain/timber)
-		await this.deployWorkgroupContract('ShuttleCircuit', 'circuit', contractParams, argv);
-		const shieldContract = await this.requireWorkgroupContract('shield');
+		await this.deployWorkgroupContract(
+			"ShuttleCircuit",
+			"circuit",
+			contractParams,
+			argv
+		);
+		const shieldContract = await this.requireWorkgroupContract("shield");
 
 		return shieldContract.address;
 	}
@@ -1288,18 +1556,21 @@ export class ParticipantStack {
 		return await Ident.clientFactory(
 			this.baselineConfig?.token,
 			this.baselineConfig?.identApiScheme,
-			this.baselineConfig?.identApiHost,
+			this.baselineConfig?.identApiHost
 		).createInvitation({
 			application_id: this.workgroup.id,
 			email: email,
 			permissions: 0,
 			params: {
-				erc1820_registry_contract_address: this.contracts['erc1820-registry'].address,
+				erc1820_registry_contract_address: this.contracts["erc1820-registry"]
+				.address,
 				invitor_organization_address: await this.resolveOrganizationAddress(),
 				authorized_bearer_token: await this.vendNatsAuthorization(),
-				organization_registry_contract_address: this.contracts['organization-registry'].address,
-				shield_contract_address: this.contracts['shield'].address,
-				verifier_contract_address: this.contracts['verifier'].address,
+				organization_registry_contract_address: this.contracts[
+					"organization-registry"
+				].address,
+				shield_contract_address: this.contracts["shield"].address,
+				verifier_contract_address: this.contracts["verifier"].address,
 				workflow_identifier: this.workflowIdentifier,
 			},
 		});
@@ -1308,13 +1579,15 @@ export class ParticipantStack {
 	private async requireCapabilities(): Promise<void> {
 		let interval;
 		const promises = [] as any;
-		promises.push(new Promise((resolve, reject) => {
-			interval = setInterval(async () => {
-				if (this.capabilities?.getBaselineRegistryContracts()) {
-					resolve();
-				}
-			}, 2500);
-		}));
+		promises.push(
+			new Promise((resolve, reject) => {
+				interval = setInterval(async () => {
+					if (this.capabilities?.getBaselineRegistryContracts()) {
+						resolve();
+					}
+				}, 2500);
+			})
+		);
 
 		await Promise.all(promises);
 		clearInterval(interval);
@@ -1326,16 +1599,23 @@ export class ParticipantStack {
 		let interval;
 
 		const promises = [] as any;
-		promises.push(new Promise((resolve, reject) => {
-			interval = setInterval(async () => {
-				this.fetchOrganization(address).then((org) => {
-					if (org && org['address'].toLowerCase() === address.toLowerCase()) {
-						organization = org;
-						resolve();
-					}
-				}).catch((err) => { });
-			}, 5000);
-		}));
+		promises.push(
+			new Promise((resolve, reject) => {
+				interval = setInterval(async () => {
+					this.fetchOrganization(address)
+						.then((org) => {
+							if (
+								org &&
+								org["address"].toLowerCase() === address.toLowerCase()
+							) {
+								organization = org;
+								resolve();
+							}
+						})
+						.catch((err) => {});
+				}, 5000);
+			})
+		);
 
 		await Promise.all(promises);
 		clearInterval(interval);
@@ -1347,13 +1627,15 @@ export class ParticipantStack {
 	async requireWorkgroup(): Promise<void> {
 		let interval;
 		const promises = [] as any;
-		promises.push(new Promise((resolve, reject) => {
-			interval = setInterval(async () => {
-				if (this.workgroup) {
-					resolve();
-				}
-			}, 2500);
-		}));
+		promises.push(
+			new Promise((resolve, reject) => {
+				interval = setInterval(async () => {
+					if (this.workgroup) {
+						resolve();
+					}
+				}, 2500);
+			})
+		);
 
 		await Promise.all(promises);
 		clearInterval(interval);
@@ -1365,14 +1647,18 @@ export class ParticipantStack {
 		let interval;
 
 		const promises = [] as any;
-		promises.push(new Promise((resolve, reject) => {
-			interval = setInterval(async () => {
-				this.resolveWorkgroupContract(type).then((cntrct) => {
-					contract = cntrct;
-					resolve();
-				}).catch((err) => { });
-			}, 5000);
-		}));
+		promises.push(
+			new Promise((resolve, reject) => {
+				interval = setInterval(async () => {
+					this.resolveWorkgroupContract(type)
+						.then((cntrct) => {
+							contract = cntrct;
+							resolve();
+						})
+						.catch((err) => {});
+				}, 5000);
+			})
+		);
 
 		await Promise.all(promises);
 		clearInterval(interval);
@@ -1385,7 +1671,7 @@ export class ParticipantStack {
 		const nchain = nchainClientFactory(
 			this.workgroupToken,
 			this.baselineConfig?.nchainApiScheme,
-			this.baselineConfig?.nchainApiHost,
+			this.baselineConfig?.nchainApiHost
 		);
 
 		//const contracts = await nchain.fetchContracts({
@@ -1395,7 +1681,10 @@ export class ParticipantStack {
 		console.log("Stubbing fetch_contracts");
 		console.log(type);
 
-		if (this.ganacheContracts[type] && this.ganacheContracts[type]['address'] !== '0x') {
+		if (
+			this.ganacheContracts[type] &&
+			this.ganacheContracts[type]["address"] !== "0x"
+		) {
 			//const contract = await nchain.fetchContractDetails(contracts[0].id!);
 			//this.contracts[type] = contract;
 			this.contracts[type] = this.ganacheContracts[type];
@@ -1405,8 +1694,10 @@ export class ParticipantStack {
 		return Promise.reject();
 	}
 
-	async registerOrganization(name: string, messagingEndpoint: string): Promise<any> {
-
+	async registerOrganization(
+		name: string,
+		messagingEndpoint: string
+	): Promise<any> {
 		// createdAt: 2021-01-22T09:30:37.2481415Z
 		// description: null
 		// id: 4f7df75f-8521-4e76-a61e-72501c7cbe0d
@@ -1423,14 +1714,20 @@ export class ParticipantStack {
 		});
 
 		const local_keys = await this.fetchKeys();
-		const local_address = local_keys && local_keys.length >= 3 ? local_keys[2].address : null;
+		const local_address =
+		local_keys && local_keys.length >= 3 ? local_keys[2].address : null;
 
 		if (this.org && local_address !== null) {
 			const vault = await this.requireVault();
-			this.babyJubJub = await this.createVaultKey(vault.id!, 'babyJubJub');
-			await this.createVaultKey(vault.id!, 'secp256k1');
-			this.hdwallet = await this.createVaultKey(vault.id!, 'BIP39');
-			await this.g_registerOrganization(name, local_address, messagingEndpoint, this.babyJubJub?.publicKey!);
+			this.babyJubJub = await this.createVaultKey(vault.id!, "babyJubJub");
+			await this.createVaultKey(vault.id!, "secp256k1");
+			this.hdwallet = await this.createVaultKey(vault.id!, "BIP39");
+			await this.g_registerOrganization(
+				name,
+				local_address,
+				messagingEndpoint,
+				this.babyJubJub?.publicKey!
+			);
 			await this.registerWorkgroupOrganization();
 		}
 
@@ -1438,31 +1735,54 @@ export class ParticipantStack {
 	}
 
 	async g_retrieveOrganization(address: any): Promise<any> {
-		const orgRegistryContract = await this.requireWorkgroupContract('organization-registry');
+		const orgRegistryContract = await this.requireWorkgroupContract(
+			"organization-registry"
+		);
 		const registry_abi = orgRegistryContract.params.compiled_artifacts.abi;
 		const url = "http://0.0.0.0:8545";
 		const provider = new Eth.providers.JsonRpcProvider(url);
 		const signer = provider.getSigner((await provider.listAccounts())[2]);
 		const managedSigner = new NonceManager(signer);
 
-		const org_registry_connector = new Eth.Contract(orgRegistryContract.address, registry_abi, signer);
+		const org_registry_connector = new Eth.Contract(
+			orgRegistryContract.address,
+			registry_abi,
+			signer
+		);
 
 		return org_registry_connector.getOrg(address);
 	}
 
-	async g_registerOrganization(name: string, address: string, messagingEndpoint: string, zkpPublicKey: string): Promise<any> {
-		const orgRegistryContract = await this.requireWorkgroupContract('organization-registry');
+	async g_registerOrganization(
+		name: string,
+		address: string,
+		messagingEndpoint: string,
+		zkpPublicKey: string
+	): Promise<any> {
+		const orgRegistryContract = await this.requireWorkgroupContract(
+			"organization-registry"
+		);
 		const registry_abi = orgRegistryContract.params.compiled_artifacts.abi;
 		const url = "http://0.0.0.0:8545";
 		const provider = new Eth.providers.JsonRpcProvider(url);
 		const signer = provider.getSigner((await provider.listAccounts())[2]);
 		const managedSigner = new NonceManager(signer);
 
-		const org_registry_connector = new Eth.Contract(orgRegistryContract.address, registry_abi, signer);
+		const org_registry_connector = new Eth.Contract(
+			orgRegistryContract.address,
+			registry_abi,
+			signer
+		);
 
 		//TODO::(Hamza) Check response
-		return await org_registry_connector.registerOrg(name, address, messagingEndpoint, 0, zkpPublicKey, {});
-
+		return await org_registry_connector.registerOrg(
+			name,
+			address,
+			messagingEndpoint,
+			0,
+			zkpPublicKey,
+			{}
+		);
 	}
 
 	async startProtocolSubscriptions(): Promise<any> {
@@ -1470,10 +1790,15 @@ export class ParticipantStack {
 			await this.nats?.connect();
 		}
 
-		const subscription = await this.nats?.subscribe(baselineProtocolMessageSubject, (msg, err) => {
-			this.protocolMessagesRx++;
-			this.dispatchProtocolMessage(unmarshalProtocolMessage(Buffer.from(msg.data)));
-		});
+		const subscription = await this.nats?.subscribe(
+			baselineProtocolMessageSubject,
+			(msg, err) => {
+				this.protocolMessagesRx++;
+				this.dispatchProtocolMessage(
+					unmarshalProtocolMessage(Buffer.from(msg.data))
+				);
+			}
+		);
 
 		this.protocolSubscriptions.push(subscription);
 		return this.protocolSubscriptions;
@@ -1484,14 +1809,16 @@ export class ParticipantStack {
 		recipient: string,
 		shield: string,
 		identifier: string,
-		payload: Buffer,
+		payload: Buffer
 	): Promise<ProtocolMessage> {
 		const vaults = await this.fetchVaults();
-		const signature = (await this.signMessage(
-			vaults[0].id!,
-			this.hdwallet!.id!,
-			sha256(payload.toString()),
-		)).signature;
+		const signature = (
+			await this.signMessage(
+				vaults[0].id!,
+				this.hdwallet!.id!,
+				sha256(payload.toString())
+			)
+		).signature;
 
 		return {
 			opcode: opcode,
@@ -1510,12 +1837,12 @@ export class ParticipantStack {
 			log,
 			this.natsConfig?.audience || this.natsConfig.natsServers[0],
 			this.natsConfig?.privateKey,
-			this.natsConfig?.publicKey,
+			this.natsConfig?.publicKey
 		);
 
 		const permissions = {
 			publish: {
-				allow: ['baseline.>'],
+				allow: ["baseline.>"],
 			},
 			subscribe: {
 				allow: [`baseline.inbound`],
@@ -1525,7 +1852,7 @@ export class ParticipantStack {
 		return await authService.vendBearerJWT(
 			baselineProtocolMessageSubject,
 			5000,
-			permissions,
+			permissions
 		);
 	}
 }
