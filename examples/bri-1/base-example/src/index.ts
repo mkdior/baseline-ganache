@@ -371,22 +371,22 @@ export class ParticipantStack {
 			"/" +
 			`${process.env.B_DATABASE_NAME}`;
 
-		const dbIdent = dbCommit.replace(new RegExp(/\b\/[a-zA-Z]*\b/), "/ident");
-		console.log(dbIdent);
-
+		// Replace database name then remove the username/password. Not working with base admin database any longer.
+		let dbIdent = (dbCommit.replace(new RegExp(/\b\/[a-zA-Z]*\b/), "/ident")).replace(new RegExp(/\b[a-zA-Z]*:[a-zA-Z0-9]*@\b/), "");
+		
+		// See https://github.com/Automattic/mongoose/issues/9335
 		let merkleConnection = await mongoose.connect(dbCommit, config.mongoose);
-		let identConnection = await mongoose.connect(dbIdent, config.mongoose);
+		let identConnection = await mongoose.createConnection(dbIdent, config.mongoose);
 
 		// Clear out all previous collections if there are any
 		await this.collectionDropper(['merkle-trees'], merkleConnection.connection);
-		await this.collectionDropper(['organization', 'user', 'workgroup'], identConnection.connection);
+		await this.collectionDropper(['organization', 'user', 'workgroup'], identConnection);
 	}
 
 	private async collectionDropper(names: string[], con: mongoose.Connection): Promise<any> {
 		for(var name of names) {
-			console.log("dropping " + name);
 			await con.db.listCollections().toArray(async (err, collections) => {
-				if (collections.length > 0) {
+				if (collections && collections.length > 0) {
 					for (var collection of collections) {
 						if (collection.name === name) {
 							console.log(`Found an old ${name} collection; delete.`);

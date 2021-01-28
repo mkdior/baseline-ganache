@@ -29,8 +29,8 @@ export interface IWorkgroup extends Document {
 	networkId: string;
 	type: string;
 	orgInfoSet: {
-		organization: IOrganization['_id'],
-			users: [IUser['_id']]
+		organization: Schema.Types.ObjectId,
+			users: [Schema.Types.ObjectId]
 	};
 	config: {
 		webhookSecret: string
