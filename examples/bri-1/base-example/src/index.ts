@@ -371,12 +371,15 @@ export class ParticipantStack {
 			"/" +
 			`${process.env.B_DATABASE_NAME}`;
 
-		// Replace database name then remove the username/password. Not working with base admin database any longer.
-		let dbIdent = (dbCommit.replace(new RegExp(/\b\/[a-zA-Z]*\b/), "/ident")).replace(new RegExp(/\b[a-zA-Z]*:[a-zA-Z0-9]*@\b/), "");
+		// Replace database name then remove the username/password. If 
+		// sourcing credentials from admin db leave the last replace commented.
+		let dbIdent = (dbCommit.replace(new RegExp(/\b\/[a-zA-Z]*\b/), "/ident")) + "?authSource=admin";//.replace(new RegExp(/\b[a-zA-Z]*:[a-zA-Z0-9]*@\b/), "");
 		
 		// See https://github.com/Automattic/mongoose/issues/9335
 		let merkleConnection = await mongoose.connect(dbCommit, config.mongoose);
 		let identConnection = await mongoose.createConnection(dbIdent, config.mongoose);
+
+		let temp = new IdentWrapper(identConnection);
 
 		// Clear out all previous collections if there are any
 		await this.collectionDropper(['merkle-trees'], merkleConnection.connection);
