@@ -62,15 +62,14 @@ import {
 	getBalance,
 } from "../test/utils-comm.js";
 
-import mongoose from "mongoose";
-import * as dv from "dotenv";
 import uuid4 from "uuid4";
+import * as dv from "dotenv";
+import mongoose from "mongoose";
 
 // Testing
-import { NonceManager } from "@ethersproject/experimental";
 import { resolve } from "dns";
-
 import { IdentWrapper } from "../../../bri-2/commit-mgr/src/db/controllers/Ident";
+import { NonceManager } from "@ethersproject/experimental";
 
 // const baselineDocumentCircuitPath = '../../../lib/circuits/createAgreement.zok';
 const baselineDocumentCircuitPath = "../../../lib/circuits/noopAgreement.zok";
@@ -290,9 +289,10 @@ export class ParticipantStack {
 					this.baselineConfig.workgroupToken
 				);
 			} else if (this.baselineConfig.workgroupName) {
+				console.log("No workgroup found so let's create one " + this.baselineConfig.workgroupName);
 				await this.createWorkgroup(this.baselineConfig.workgroupName);
 			}
-
+			
 			await this.registerOrganization(
 				this.baselineConfig.orgName,
 				this.natsConfig.natsServers[0]
@@ -522,6 +522,8 @@ export class ParticipantStack {
 			console.log(`(Error 1): ${JSON.stringify(err, undefined, 2)}`)
 		);
 
+		// TODO:: Test out each transaction@
+
 		const verifierReceipt = await this.commitMgrApiBob.post("/jsonrpc").send({
 			jsonrpc: "2.0",
 			method: "eth_getTransactionReceipt",
@@ -604,9 +606,8 @@ export class ParticipantStack {
 		console.log(`Address of the ERC-1820 contract: ${erc1820Address}`);
 
 		// Begin ORG-Registry contract
-		const encodedOrgParams = abiCoder.encode(["address"], [erc1820Address]);
-		const orgBytecodeWithParams =
-		orgRegistryContract.bytecode + encodedShieldParams.slice(2).toString();
+		const encodedOrgParams = abiCoder.encode(["bytes32"], [Eth.utils.hexZeroPad(erc1820Address, 32)]);
+		const orgBytecodeWithParams = orgRegistryContract.bytecode + encodedOrgParams.slice(2).toString();
 
 		const unsignedOrgTx: any = {
 			from: sender,
@@ -637,6 +638,8 @@ export class ParticipantStack {
 		orgRegistryAddress = orgReceiptDetails.contractAddress;
 
 		console.log(`Address of the ORG-Registry contract: ${orgRegistryAddress}`);
+		return;
+		
 
 		this.ganacheContracts = {
 			"erc1820-registry": {
@@ -1110,6 +1113,7 @@ export class ParticipantStack {
 		this.workgroupToken = tokenResp.accessToken || tokenResp.token;
 
 		if (this.baselineConfig.initiator) {
+			// Deploy organization-registry
 			await this.initWorkgroup();
 		}
 
@@ -1127,6 +1131,7 @@ export class ParticipantStack {
 		const registryContracts = JSON.parse(
 			JSON.stringify(this.capabilities?.getBaselineRegistryContracts())
 		);
+
 		const contractParams = registryContracts[2]; // "shuttle" launch contract
 		// ^^ FIXME -- load from disk -- this is a wrapper to deploy the OrgRegistry contract
 
@@ -1226,22 +1231,22 @@ export class ParticipantStack {
 		);
 		// https://docs.provide.services/api/nchain/signing/accounts#create-account
 		// Signer
-		//const signerResp = (await nchain.createAccount({
-		//network_id: this.baselineConfig?.networkId,
-		//}));
+		const signerResp = (await nchain.createAccount({
+		network_id: this.baselineConfig?.networkId,
+		}));
 
-		//		const resp = await NChain.clientFactory(
-		//			this.workgroupToken,
-		//			this.baselineConfig?.nchainApiScheme,
-		//			this.baselineConfig?.nchainApiHost,
-		//		).executeContract(orgRegistryContract.id, {
-		//			method: 'getOrg',
-		//			params: [address],
-		//			value: 0,
-		//			account_id: signerResp['id'],
-		//		});
+				const resp = await NChain.clientFactory(
+					this.workgroupToken,
+					this.baselineConfig?.nchainApiScheme,
+					this.baselineConfig?.nchainApiHost,
+				).executeContract(orgRegistryContract.id, {
+					method: 'getOrg',
+					params: [address],
+					value: 0,
+					account_id: signerResp['id'],
+				});
 
-		const resp = await this.g_retrieveOrganization(address);
+		//const resp = await this.g_retrieveOrganization(address);
 
 		if (
 			resp &&
@@ -1650,8 +1655,10 @@ export class ParticipantStack {
 		promises.push(
 			new Promise((resolve, reject) => {
 				interval = setInterval(async () => {
+					console.log(`Requiring ${type}`);
 					this.resolveWorkgroupContract(type)
 						.then((cntrct) => {
+							console.log(`Resolved ${cntrct}`);
 							contract = cntrct;
 							resolve();
 						})
@@ -1678,8 +1685,7 @@ export class ParticipantStack {
 		//	type: type,
 		//});
 
-		console.log("Stubbing fetch_contracts");
-		console.log(type);
+		console.log("Stubbing " + type);
 
 		if (
 			this.ganacheContracts[type] &&
@@ -1713,23 +1719,22 @@ export class ParticipantStack {
 			},
 		});
 
-		const local_keys = await this.fetchKeys();
-		const local_address =
-		local_keys && local_keys.length >= 3 ? local_keys[2].address : null;
-
-		if (this.org && local_address !== null) {
+		if (this.org) {
 			const vault = await this.requireVault();
 			this.babyJubJub = await this.createVaultKey(vault.id!, "babyJubJub");
 			await this.createVaultKey(vault.id!, "secp256k1");
 			this.hdwallet = await this.createVaultKey(vault.id!, "BIP39");
 			await this.g_registerOrganization(
 				name,
-				local_address,
+				(await this.fetchKeys())[2], // secp256k1 key
 				messagingEndpoint,
+				(await this.getNatsBearerTokens())[messagingEndpoint] || "0x0",
 				this.babyJubJub?.publicKey!
 			);
 			await this.registerWorkgroupOrganization();
 		}
+
+		console.log(`Organization key = ${JSON.stringify((await this.fetchKeys())[2], undefined, 2)}`);
 
 		return this.org;
 	}
@@ -1757,11 +1762,13 @@ export class ParticipantStack {
 		name: string,
 		address: string,
 		messagingEndpoint: string,
+		messagingBearerToken: string,
 		zkpPublicKey: string
 	): Promise<any> {
 		const orgRegistryContract = await this.requireWorkgroupContract(
 			"organization-registry"
 		);
+
 		const registry_abi = orgRegistryContract.params.compiled_artifacts.abi;
 		const url = "http://0.0.0.0:8545";
 		const provider = new Eth.providers.JsonRpcProvider(url);
@@ -1771,18 +1778,31 @@ export class ParticipantStack {
 		const org_registry_connector = new Eth.Contract(
 			orgRegistryContract.address,
 			registry_abi,
-			signer
+			signer	
 		);
 
+		console.log(JSON.stringify(registry_abi, undefined, 2));
 		//TODO::(Hamza) Check response
-		return await org_registry_connector.registerOrg(
-			name,
-			address,
-			messagingEndpoint,
-			0,
-			zkpPublicKey,
-			{}
-		);
+        //"name": "_name",
+        //"name": "_address",
+        //"name": "_messagingEndpoint",
+        //"name": "_whisperKey",
+        //"name": "_zkpPublicKey",
+		//"name": "_metadata",
+
+		//return await org_registry_connector.registerOrg(
+		//	name,
+		//	address,
+		//	messagingEndpoint,
+		//	messagingBearerToken,
+		//	zkpPublicKey,
+		//	""
+		//);
+
+		const org_address = JSON.stringify(address, undefined, 2).match(new RegExp(/\b0x[a-zA-Z0-9]{40}\b/))![0];
+		//getManager
+		console.log(`Organization getManager: ${await org_registry_connector.getManager().then((m) => {return m;})}`);
+		return undefined;
 	}
 
 	async startProtocolSubscriptions(): Promise<any> {
