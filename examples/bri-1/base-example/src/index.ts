@@ -534,8 +534,6 @@ export class ParticipantStack {
 		const verifierReceiptDetails = verifierReceipt.body.result;
 		verifierAddress = verifierReceiptDetails.contractAddress;
 
-		console.log(`Address of the verifier contract: ${verifierAddress}`);
-
 		// Begin Shield Contract
 		const encodedShieldParams = abiCoder.encode(
 			["address", "uint"],
@@ -572,8 +570,6 @@ export class ParticipantStack {
 		const shieldReceiptDetails = shieldReceipt.body.result;
 		shieldAddress = shieldReceiptDetails.contractAddress;
 
-		console.log(`Address of the shield contract: ${shieldAddress}`);
-
 		// Begin ERC-1820 contract
 		const unsigned1820Tx: any = {
 			from: sender,
@@ -602,8 +598,6 @@ export class ParticipantStack {
 
 		const erc1820ReceiptDetails = erc1820Receipt.body.result;
 		erc1820Address = erc1820ReceiptDetails.contractAddress;
-
-		console.log(`Address of the ERC-1820 contract: ${erc1820Address}`);
 
 		// Begin ORG-Registry contract
 		const encodedOrgParams = abiCoder.encode(["bytes32"], [Eth.utils.hexZeroPad(erc1820Address, 32)]);
@@ -636,10 +630,6 @@ export class ParticipantStack {
 
 		const orgReceiptDetails = orgReceipt.body.result;
 		orgRegistryAddress = orgReceiptDetails.contractAddress;
-
-		console.log(`Address of the ORG-Registry contract: ${orgRegistryAddress}`);
-		return;
-		
 
 		this.ganacheContracts = {
 			"erc1820-registry": {
@@ -679,6 +669,11 @@ export class ParticipantStack {
 				type: "verifier",
 			},
 		};
+
+		for (const [key, value] of Object.entries(this.ganacheContracts)) {
+			console.log(`${key} address: ${(value as any)!.address}`);
+		}
+		
 	}
 
 	private async dispatchProtocolMessage(msg: ProtocolMessage): Promise<any> {
@@ -1218,7 +1213,6 @@ export class ParticipantStack {
 	}
 
 	async fetchOrganization(address: string): Promise<Organization> {
-		//<++>
 		// fetchOrganization == On-chain registration??
 		const orgRegistryContract = await this.requireWorkgroupContract(
 			"organization-registry"
@@ -1770,38 +1764,38 @@ export class ParticipantStack {
 		);
 
 		const registry_abi = orgRegistryContract.params.compiled_artifacts.abi;
+
 		const url = "http://0.0.0.0:8545";
 		const provider = new Eth.providers.JsonRpcProvider(url);
+
 		const signer = provider.getSigner((await provider.listAccounts())[2]);
 		const managedSigner = new NonceManager(signer);
 
 		const org_registry_connector = new Eth.Contract(
 			orgRegistryContract.address,
 			registry_abi,
-			signer	
+			managedSigner	
 		);
 
-		console.log(JSON.stringify(registry_abi, undefined, 2));
-		//TODO::(Hamza) Check response
-        //"name": "_name",
-        //"name": "_address",
-        //"name": "_messagingEndpoint",
-        //"name": "_whisperKey",
-        //"name": "_zkpPublicKey",
-		//"name": "_metadata",
-
-		//return await org_registry_connector.registerOrg(
-		//	name,
-		//	address,
-		//	messagingEndpoint,
-		//	messagingBearerToken,
-		//	zkpPublicKey,
-		//	""
-		//);
-
 		const org_address = JSON.stringify(address, undefined, 2).match(new RegExp(/\b0x[a-zA-Z0-9]{40}\b/))![0];
-		//getManager
-		console.log(`Organization getManager: ${await org_registry_connector.getManager().then((m) => {return m;})}`);
+
+		let registered_org =  await org_registry_connector.registerOrg(
+			org_address,
+			Eth.utils.formatBytes32String(name),
+			Eth.utils.toUtf8Bytes(messagingEndpoint),
+			Eth.utils.toUtf8Bytes(messagingBearerToken),
+			Eth.utils.toUtf8Bytes(zkpPublicKey),
+			Eth.utils.toUtf8Bytes("{}")
+		).then(
+			(v) => { 
+				console.log("Registered org; " + JSON.stringify(Eth.utils.defaultAbiCoder.decode(["address", "bytes32", "bytes", "bytes", "bytes", "bytes"], Eth.utils.hexDataSlice(v.data, 4)), undefined, 2)); return v;	
+			}
+		).catch(
+			(e: any) => {
+				console.log(`Registration error: ${e}`);
+			}
+		);
+
 		return undefined;
 	}
 
