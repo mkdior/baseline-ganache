@@ -1767,15 +1767,19 @@ export class ParticipantStack {
     //  },
     //});
 
-    //const identOrganization = await IdentWrapper.createOrganization(
-    //  new Date().toString(),
-    //  name,
-    //  `${uuid4()}`,
-    //  ``,
-    //  ``
-    //);
+    const identOrganization = (await this.identConnector()).service.createOrganization(
+      new Date().toString(),
+      name,
+      `${uuid4()}`,
+      ``,
+			{
+				messaging_endpoint: messagingEndpoint
+			}
+    );
 
-    //console.log(`Ident Organization: ${identOrganization}`);
+		identOrganization.then((v) => {
+			console.log(`Ident Organization: ${JSON.stringify(v, undefined, 2)}`);
+		});
 
     return;
 
