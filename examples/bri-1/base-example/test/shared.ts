@@ -20,8 +20,8 @@ export const shouldBehaveLikeAWorkgroupOrganization = function () {
       before(async () => {
         erc1820Registry = await this.ctx.app.requireWorkgroupContract('erc1820-registry');
         orgRegistry = await this.ctx.app.requireWorkgroupContract('organization-registry');
-        shield = this.ctx.app.getWorkgroupContract('shield');
-        verifier = this.ctx.app.getWorkgroupContract('verifier');
+        shield = this.ctx.app.getWorkgroupContractGanache('shield');
+        verifier = this.ctx.app.getWorkgroupContractGanache('verifier');
         workflowIdentifier = this.ctx.app.getWorkflowIdentifier();
       });
 
@@ -41,7 +41,8 @@ export const shouldBehaveLikeAWorkgroupOrganization = function () {
       });
 
       it('should track the workgroup shield in an off-chain merkle tree database', async () => {
-        const trackedShieldContracts = await this.ctx.app.baseline.getTracked();
+        //const trackedShieldContracts = await this.ctx.app.baseline?.getTracked();
+        const trackedShieldContracts = await this.ctx.app.getTracked();
         assert(trackedShieldContracts.indexOf(shield.address.toLowerCase()) !== -1, 'workgroup shield contract should have been tracked');
       });
 
@@ -239,8 +240,8 @@ export const shouldBehaveLikeAnInitialWorkgroupOrganization = function () {
           let verifier;
 
           before(async () => {
-            shield = this.ctx.app.getWorkgroupContract('shield');
-            verifier = this.ctx.app.getWorkgroupContract('verifier');
+            shield = this.ctx.app.getWorkgroupContractGanache('shield');
+            verifier = this.ctx.app.getWorkgroupContractGanache('verifier');
           });
 
           it('should deposit the workgroup shield contract on-chain', async () => {
@@ -249,7 +250,8 @@ export const shouldBehaveLikeAnInitialWorkgroupOrganization = function () {
           });
 
           it('should track the workgroup shield in an off-chain merkle tree database', async () => {
-            const trackedShieldContracts = await this.ctx.app.baseline.getTracked();
+            //const trackedShieldContracts = await this.ctx.app.baseline?.getTracked();
+						const trackedShieldContracts = await this.ctx.app.getTracked();
             assert(trackedShieldContracts.indexOf(shield.address.toLowerCase()) !== -1, 'workgroup shield contract should have been tracked');
           });
 

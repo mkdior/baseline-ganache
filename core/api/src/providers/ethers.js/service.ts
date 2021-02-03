@@ -31,7 +31,7 @@ export class Ethers implements IBlockchainService {
     throw new Error('not implemented');
   }
 
-    // IRegistry
+  // IRegistry
 
   createWorkgroup(params: object): Promise<any> {
     throw new Error('not implemented');

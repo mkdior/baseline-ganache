@@ -148,8 +148,10 @@ const baseline_getProof = new jayson.Method(
 // Returns array containing addresses of all 'active' Shield contracts
 const baseline_getTracked = new jayson.Method(
   async (args: any, context: any, done: any) => {
+    logger.info(`baseline_getTracked server injection: 1`);
     const error = validateParams(args, 0);
     if (error) {
+    logger.info(`baseline_getTracked server injection: 2`);
       done(error, null);
       return;
     };
@@ -159,6 +161,7 @@ const baseline_getTracked = new jayson.Method(
       _id: { $regex: /_0$/ },
       active: true
     }).select('_id').lean();
+    logger.info(`baseline_getTracked server injection: 3`);
     const contractAddresses = [];
     for (const contract of trackedContracts) {
       const address = contract._id.slice(0, -2); // Cut off trailing "_0"
@@ -222,15 +225,21 @@ const baseline_verifyAndPush = new jayson.Method(
 
 const baseline_track = new jayson.Method(
   async (args: any, context: any, done: any) => {
+    logger.info(`baseline_track server injection: 1`);
     let error = validateParams(args, 1);
     if (error) {
+    logger.info(`baseline_track server injection: 2`);
       done(error, null);
       return;
     };
 
+    logger.info(`baseline_track server injection: 3`);
     const contractAddress = args[0];
+    logger.info(`baseline_track server injection: 4`);
     const merkleTree = await merkleTrees.findOne({ _id: `${contractAddress}_0` });
+    logger.info(`baseline_track server injection: 5`);
     if (merkleTree && merkleTree.active === true) {
+    logger.info(`baseline_track server injection: 6`);
       error = {
         code: -32603,
         message: `Internal server error`,
@@ -239,8 +248,10 @@ const baseline_track = new jayson.Method(
       done(error, null)
       return;
     }
+    logger.info(`baseline_track server injection: 7`);
 
     const methodSignature = "0x01e3e915"; // function selector for "treeHeight()"
+    logger.info(`baseline_track server injection: 8`);
     const res = await jsonrpc("eth_call", [
       {
         "to": contractAddress,
@@ -249,11 +260,14 @@ const baseline_track = new jayson.Method(
       "latest"
     ]);
     if (res.error) {
+    logger.info(`baseline_track server injection: 9`);
       done(res.error, res.result)
       return;
     }
     const treeHeight = Number(res.result);
+    logger.info(`baseline_track server injection: 10`);
     if (!treeHeight) {
+    logger.info(`baseline_track server injection: 11`);
       error = {
         code: -32603,
         message: `Internal server error`,
@@ -264,6 +278,7 @@ const baseline_track = new jayson.Method(
     }
     logger.info(`[baseline_track] found treeHeight of ${treeHeight} for contract ${contractAddress}`)
 
+    logger.info(`baseline_track server injection: 12`);
     await merkleTrees.findOneAndUpdate(
       { _id: `${contractAddress}_0` },
       {

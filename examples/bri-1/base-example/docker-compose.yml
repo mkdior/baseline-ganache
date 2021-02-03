@@ -2,7 +2,76 @@ version: '3.5'
 
 services:
 
+  # Shared services
+  ganache:
+    container_name: ganache
+    image: trufflesuite/ganache-cli:v6.6.0
+    command: ganache-cli -m 'candy maple cake sugar pudding cream honey rich smooth crumble sweet treat' --defaultBalanceEther 10000 --account="0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63, 1000000000000000000000" --account="0xc87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3, 1000000000000000000000" --account="0xae6ae8e5ccbfb04590405997ee2d52d2b330726137b875053c36d94e974d162f, 1000000000000000000000" --networkId '101010' --gasLimit 10000000 --allowUnlimitedContractSize --noVMErrorsOnRPCResponse
+    ports:
+      - 8545:8545
+    networks:
+      - bob
+      - alice
+    volumes:
+      - ./ops/ganache_health.sh:/app/health-check.sh:delegated
+    healthcheck:
+      test: ["CMD", "sh", "health-check.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
   # alice
+  alice-mongo:
+    container_name: alice-mongo
+    image: mongo:latest
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=alice
+      - MONGO_INITDB_ROOT_PASSWORD=alice2021
+      - MONGO_INITDB_DATABASE=baseline
+    volumes:
+      - ../../bri-2/db:/docker-entrypoint-initdb.d
+      - alice-mongo:/data/db
+      - ../../bri-2/ops/mongo_health.sh:/health-check.sh:delegated
+    logging:
+      options:
+        max-size: 10m
+    networks:
+      - alice
+    ports:
+      - 27117:27017
+    healthcheck:
+      test: ["CMD", "sh", "health-check.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  alice-commit-mgr:
+    hostname: alice-commit-mgr
+    container_name: alice-commit-mgr
+    depends_on:
+      - alice-mongo
+    build:
+      context: ../../bri-2/commit-mgr
+      dockerfile: ./Dockerfile
+    env_file:
+      - ./.env
+    environment:
+      - DATABASE_HOST=alice-mongo:27017
+      - DATABASE_USER=alice
+      - DATABASE_PASSWORD=alice2021
+      - DATABASE_NAME=baseline
+    networks:
+      - alice
+    ports:
+     - 4001:4001
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4001/status"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   alice-postgres:
     image: postgres
@@ -342,6 +411,58 @@ services:
       - ./ops/await_tcp.sh:/usr/local/bin/await_tcp.sh:cached
 
   # bob
+  
+  bob-mongo:
+    container_name: bob-mongo
+    image: mongo:latest
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=bob
+      - MONGO_INITDB_ROOT_PASSWORD=bob2021
+      - MONGO_INITDB_DATABASE=baseline
+    volumes:
+      - ../../bri-2/db:/docker-entrypoint-initdb.d
+      - bob-mongo:/data/db
+      - ../../bri-2/ops/mongo_health.sh:/health-check.sh:delegated
+    logging:
+      options:
+        max-size: 10m
+    networks:
+      - bob
+    ports:
+      - 27118:27017
+    healthcheck:
+      test: ["CMD", "sh", "health-check.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  bob-commit-mgr:
+    hostname: bob-commit-mgr
+    container_name: bob-commit-mgr
+    depends_on:
+      - bob-mongo
+    build:
+      context: ../../bri-2/commit-mgr
+      dockerfile: ./Dockerfile
+    env_file:
+      - ./.env
+    environment:
+      - DATABASE_HOST=bob-mongo:27017
+      - DATABASE_USER=bob
+      - DATABASE_PASSWORD=bob2021
+      - DATABASE_NAME=baseline
+    networks:
+      - bob
+    ports:
+     - 4002:4001
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4001/status"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
 
   bob-postgres:
     image: postgres
@@ -693,3 +814,5 @@ networks:
 volumes:
   alice-db:
   bob-db:
+  alice-mongo:
+  bob-mongo:

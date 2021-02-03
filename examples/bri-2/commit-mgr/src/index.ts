@@ -31,7 +31,7 @@ const main = async () => {
   app.use(reqLogger('COMMIT-MGR')); // Log requests
   app.use(reqErrorLogger('COMMIT-MGR')); // Log errors
   app.use(bodyParser.json({ limit: "2mb" })); // Pre-parse body content
-  app.use(cors());
+  app.use(cors()); // Enable cross-origin resource sharing
   app.use(rpcServer.middleware());
 
   app.get('/status', async (req: any, res: any) => {
@@ -53,7 +53,7 @@ const main = async () => {
     await rpcServer.call(req.body, context, (err: any, result: any) => {
       if (err) {
         const errorMessage = err.error.data ? `${err.error.message}: ${err.error.data}` : `${err.error.message}`;
-        logger.error(`Response error: ${errorMessage}`);
+        logger.error(`Response error: ${JSON.stringify(err, undefined, 2)}`);
         res.send(err);
         return;
       }

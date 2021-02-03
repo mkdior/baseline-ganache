@@ -1,6 +1,7 @@
 {
   "include": [
-    "./src/**/*"
+    "./src/**/*",
+		"../../bri-2/commit-mgr/src/db/**/*"
   ],
   "compilerOptions": {
     "allowJs": false,
