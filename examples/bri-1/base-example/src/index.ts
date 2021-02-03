@@ -237,6 +237,9 @@ export class ParticipantStack {
   private commitMgrApiBob: any;
   private commitMgrApiAlice: any;
 
+  private identService: any;
+  private identConnection: any;
+
   constructor(baselineConfig: any, natsConfig: any) {
     this.baselineConfig = baselineConfig;
     this.natsConfig = natsConfig;
@@ -440,18 +443,12 @@ export class ParticipantStack {
 
     // See https://github.com/Automattic/mongoose/issues/9335
     let merkleConnection = await mongoose.connect(dbCommit, config.mongoose);
-    let identConnection = await mongoose.createConnection(
-      dbIdent,
-      config.mongoose
-    );
-
-    let temp = new IdentWrapper(identConnection);
 
     // Clear out all previous collections if there are any
     await this.collectionDropper(["merkle-trees"], merkleConnection.connection);
     await this.collectionDropper(
       ["organization", "user", "workgroup"],
-      identConnection
+     (await this.identConnector()).connection 
     );
   }
 
@@ -470,6 +467,47 @@ export class ParticipantStack {
           }
         }
       });
+    }
+  }
+
+  private async identConnector(): Promise<any> {
+    if (this.identService && this.identConnection) {
+      return {
+        service: this.identService,
+        connection: this.identConnection,
+      };
+    } else {
+      // Establish our Ident service
+      const dbCommit =
+        "mongodb://" +
+        `${process.env.B_DATABASE_USER}` +
+        ":" +
+        `${process.env.B_DATABASE_PASSWORD}` +
+        "@" +
+        `${process.env.B_DATABASE_HOST}` +
+        "/" +
+        `${process.env.B_DATABASE_NAME}`;
+
+      let dbIdent =
+        dbCommit.replace(new RegExp(/\b\/[a-zA-Z]*\b/), "/ident") +
+        "?authSource=admin"; //.replace(new RegExp(/\b[a-zA-Z]*:[a-zA-Z0-9]*@\b/), "");
+
+      this.identConnection = await mongoose.createConnection(dbIdent, {
+        useUnifiedTopology: true,
+        useNewUrlParser: true,
+        useFindAndModify: false,
+        useCreateIndex: true,
+        poolSize: 5, // Max. number of simultaneous connections to maintain
+        socketTimeoutMS: 0, // Use os-default, only useful when a network issue occurs and the peer becomes unavailable
+        keepAlive: true, // KEEP ALIVE!
+      });
+
+      this.identService = new IdentWrapper(this.identConnection);
+
+      return {
+        service: this.identService,
+        connection: this.identConnection,
+      };
     }
   }
 
@@ -1704,20 +1742,19 @@ export class ParticipantStack {
     name: string,
     messagingEndpoint: string
   ): Promise<any> {
-
-		// *************************************************
-		// Pre-organization creation through Ident. Not sure
-		// what happens here. But I just assume that this is
-		// pre-registration. We're not dealing with addresses
-		// yet. These are assigned once this organization is
-		// created and saved in Provide's Ident DB. Keys are
-		// dealt with by Provide Vault.
-		// *************************************************
-		// Ident.createOrganization RETURN DATA ************
-		//
+    // *************************************************
+    // Pre-organization creation through Ident. Not sure
+    // what happens here. But I just assume that this is
+    // pre-registration. We're not dealing with addresses
+    // yet. These are assigned once this organization is
+    // created and saved in Provide's Ident DB. Keys are
+    // dealt with by Provide Vault.
+    // *************************************************
+    // Ident.createOrganization RETURN DATA ************
+    //
     // createdAt: 2021-01-22T09:30:37.2481415Z
     // description: null
-    // id: 4f7df75f-8521-4e76-a61e-72501c7cbe0d
+    // ie: 4f7df75f-8521-4e76-a61e-72501c7cbe0d
     // metadata:
     // messaging_endpoint: nats://localhost:4224
     // name: Bob Corp
@@ -1730,31 +1767,42 @@ export class ParticipantStack {
     //  },
     //});
 
-		this.org = await this.g_registerOrganization(
-        name,
-        messagingEndpoint,
-        (await this.getNatsBearerTokens())[messagingEndpoint] || "0x0",
-      );
+    //const identOrganization = await IdentWrapper.createOrganization(
+    //  new Date().toString(),
+    //  name,
+    //  `${uuid4()}`,
+    //  ``,
+    //  ``
+    //);
 
+    //console.log(`Ident Organization: ${identOrganization}`);
 
-    if (this.org) {
-      const vault = await this.requireVault();
-      this.babyJubJub = await this.createVaultKey(vault.id!, "babyJubJub");
-      await this.createVaultKey(vault.id!, "secp256k1");
-      this.hdwallet = await this.createVaultKey(vault.id!, "BIP39");
+    return;
 
-      await this.registerWorkgroupOrganization();
-    }
-
-    console.log(
-      `Organization key = ${JSON.stringify(
-        (await this.fetchKeys())[2],
-        undefined,
-        2
-      )}`
-    );
-
-    return this.org;
+//    this.org = await this.g_registerOrganization(
+//      name,
+//      messagingEndpoint,
+//      (await this.getNatsBearerTokens())[messagingEndpoint] || "0x0"
+//    );
+//
+//    if (this.org) {
+//      const vault = await this.requireVault();
+//      this.babyJubJub = await this.createVaultKey(vault.id!, "babyJubJub");
+//      await this.createVaultKey(vault.id!, "secp256k1");
+//      this.hdwallet = await this.createVaultKey(vault.id!, "BIP39");
+//
+//      await this.registerWorkgroupOrganization();
+//    }
+//
+//    console.log(
+//      `Organization key = ${JSON.stringify(
+//        (await this.fetchKeys())[2],
+//        undefined,
+//        2
+//      )}`
+//    );
+//
+//    return this.org;
   }
 
   async g_retrieveOrganization(address: any): Promise<any> {
@@ -1770,7 +1818,7 @@ export class ParticipantStack {
     const org_registry_connector = new Eth.Contract(
       orgRegistryContract.address,
       registry_abi,
-     	managedSigner 
+      managedSigner
     );
 
     return org_registry_connector.getOrg(address);
@@ -1783,21 +1831,20 @@ export class ParticipantStack {
     messagingBearerToken: string,
     zkpPublicKey: string
   ): Promise<any> {
-
-		// Process Description ************************************
-		//
-		// Organization registry happens in three phases.
-		// Phase one: First we create the intial organization. This
-		// organization is saved in some local/remote Identity DB.
-		//
-		// Phase two: Set up all organization related keys. This
-		// in general hapens through a vault service. If you'd like
-		// to be unsafe though, just save it with the organization
-		// itself.
-		//
-		// Phase three: Once the previous two phases have been
-		// executed. It is now time to add whatever data we've just
-		// created to the organization registry smart contract.
+    // Process Description ************************************
+    //
+    // Organization registry happens in three phases.
+    // Phase one: First we create the intial organization. This
+    // organization is saved in some local/remote Identity DB.
+    //
+    // Phase two: Set up all organization related keys. This
+    // in general hapens through a vault service. If you'd like
+    // to be unsafe though, just save it with the organization
+    // itself.
+    //
+    // Phase three: Once the previous two phases have been
+    // executed. It is now time to add whatever data we've just
+    // created to the organization registry smart contract.
 
     const orgRegistryContract = await this.requireWorkgroupContract(
       "organization-registry"
@@ -1831,17 +1878,17 @@ export class ParticipantStack {
         Eth.utils.toUtf8Bytes("{}")
       )
       .then((v) => {
-				// Decode our transaction data. 
+        // Decode our transaction data.
         const tempOrg = Eth.utils.defaultAbiCoder.decode(
           ["address", "bytes32", "bytes", "bytes", "bytes", "bytes"],
           // Remove first 4 bytes ( the function sighash )
           Eth.utils.hexDataSlice(v.data, 4)
         );
 
-				// Parse the organization values and return it to base variable.
+        // Parse the organization values and return it to base variable.
         return {
-					// TODO::(Hamza) Check if this equals our secp256k1 key
-          address: tempOrg[0], 
+          // TODO::(Hamza) Check if this equals our secp256k1 key
+          address: tempOrg[0],
           name: Eth.utils.parseBytes32String(tempOrg[1]),
           messagingEndpoint: Eth.utils.toUtf8String(tempOrg[3]),
           zkpPublicKey: Eth.utils.toUtf8String(tempOrg[4]),
