@@ -1791,7 +1791,7 @@ export class ParticipantStack {
       await this.createVaultKey(vault.id!, "secp256k1");
       this.hdwallet = await this.createVaultKey(vault.id!, "BIP39");
 
-			// Phase three -- Register organization in registry
+      // Phase three -- Register organization in registry
       await this.g_registerOrganization(
         this.org.name,
         (await this.fetchKeys())[2]["address"],
