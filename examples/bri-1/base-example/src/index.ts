@@ -1783,6 +1783,22 @@ export class ParticipantStack {
     messagingBearerToken: string,
     zkpPublicKey: string
   ): Promise<any> {
+
+		// Process Description ************************************
+		//
+		// Organization registry happens in three phases.
+		// Phase one: First we create the intial organization. This
+		// organization is saved in some local/remote Identity DB.
+		//
+		// Phase two: Set up all organization related keys. This
+		// in general hapens through a vault service. If you'd like
+		// to be unsafe though, just save it with the organization
+		// itself.
+		//
+		// Phase three: Once the previous two phases have been
+		// executed. It is now time to add whatever data we've just
+		// created to the organization registry smart contract.
+
     const orgRegistryContract = await this.requireWorkgroupContract(
       "organization-registry"
     );
