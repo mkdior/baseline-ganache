@@ -1704,6 +1704,17 @@ export class ParticipantStack {
     name: string,
     messagingEndpoint: string
   ): Promise<any> {
+
+		// *************************************************
+		// Pre-organization creation through Ident. Not sure
+		// what happens here. But I just assume that this is
+		// pre-registration. We're not dealing with addresses
+		// yet. These are assigned once this organization is
+		// created and saved in Provide's Ident DB. Keys are
+		// dealt with by Provide Vault.
+		// *************************************************
+		// Ident.createOrganization RETURN DATA ************
+		//
     // createdAt: 2021-01-22T09:30:37.2481415Z
     // description: null
     // id: 4f7df75f-8521-4e76-a61e-72501c7cbe0d
@@ -1712,25 +1723,26 @@ export class ParticipantStack {
     // name: Bob Corp
     // userId: 74651596-82e8-4ba9-9c9d-058b11bd8d50
 
-    this.org = await this.baseline?.createOrganization({
-      name: name,
-      metadata: {
-        messaging_endpoint: messagingEndpoint,
-      },
-    });
+    //this.org = await this.baseline?.createOrganization({
+    //  name: name,
+    //  metadata: {
+    //    messaging_endpoint: messagingEndpoint,
+    //  },
+    //});
+
+		this.org = await this.g_registerOrganization(
+        name,
+        messagingEndpoint,
+        (await this.getNatsBearerTokens())[messagingEndpoint] || "0x0",
+      );
+
 
     if (this.org) {
       const vault = await this.requireVault();
       this.babyJubJub = await this.createVaultKey(vault.id!, "babyJubJub");
       await this.createVaultKey(vault.id!, "secp256k1");
       this.hdwallet = await this.createVaultKey(vault.id!, "BIP39");
-      await this.g_registerOrganization(
-        name,
-        (await this.fetchKeys())[2], // secp256k1 key
-        messagingEndpoint,
-        (await this.getNatsBearerTokens())[messagingEndpoint] || "0x0",
-        this.babyJubJub?.publicKey!
-      );
+
       await this.registerWorkgroupOrganization();
     }
 
@@ -1758,7 +1770,7 @@ export class ParticipantStack {
     const org_registry_connector = new Eth.Contract(
       orgRegistryContract.address,
       registry_abi,
-      signer
+     	managedSigner 
     );
 
     return org_registry_connector.getOrg(address);
@@ -1812,7 +1824,8 @@ export class ParticipantStack {
 
 				// Parse the organization values and return it to base variable.
         return {
-          address: tempOrg[0], // TODO::(Hamza) Check if this equals our secp256k1 key
+					// TODO::(Hamza) Check if this equals our secp256k1 key
+          address: tempOrg[0], 
           name: Eth.utils.parseBytes32String(tempOrg[1]),
           messagingEndpoint: Eth.utils.toUtf8String(tempOrg[3]),
           zkpPublicKey: Eth.utils.toUtf8String(tempOrg[4]),
