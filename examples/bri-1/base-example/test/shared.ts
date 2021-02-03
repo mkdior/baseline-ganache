@@ -80,6 +80,8 @@ export const shouldBehaveLikeAWorkgroupOrganization = function () {
       let address;
 
       before(async () => {
+				//TODO::(Hamza) -- CONT
+				console.log(`1`);
         const keys = await this.ctx.app.fetchKeys();
         address = keys && keys.length >= 3 ? keys[2].address : null;
         assert(address, 'default secp256k1 keypair should not be null');

@@ -452,6 +452,7 @@ export class ParticipantStack {
     );
   }
 
+	// TODO::(Hamza) -- Scan for and delete Ident collections.
   private async collectionDropper(
     names: string[],
     con: mongoose.Connection
@@ -1794,7 +1795,7 @@ export class ParticipantStack {
       // Phase three -- Register organization in registry
       await this.g_registerOrganization(
         this.org.name,
-        (await this.fetchKeys())[2]["address"],
+        (await this.fetchKeys())[2].address,
         this.org.messaging_endpoint,
         this.natsBearerTokens[this.org.messaging_endpoint],
         this.babyJubJub?.publicKey!
