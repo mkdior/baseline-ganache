@@ -1767,17 +1767,20 @@ export class ParticipantStack {
     //  },
     //});
 
-    const identOrganization = (await this.identConnector()).service.createOrganization(
-      new Date().toString(),
-      name,
-      `${uuid4()}`,
-      ``,
-			{
+    const identOrganization = (await this.identConnector()).service.createOrganization({
+			createdAt: new Date().toString(),
+      name: name,
+      userId: `${uuid4()}`,
+      description: ``,
+			metadata: {
 				messaging_endpoint: messagingEndpoint
 			}
-    );
+		});
 
-		identOrganization.then((v) => {
+		identOrganization.then(async (v) => {
+			const retOrg = await (await this.identConnector()).service.IdentTables.OrganizationModel.find({});
+			
+			console.log(`RetOrg: ${JSON.stringify(retOrg, undefined, 2)}`);
 			console.log(`Ident Organization: ${JSON.stringify(v, undefined, 2)}`);
 		});
 
