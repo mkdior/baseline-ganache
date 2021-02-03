@@ -1794,7 +1794,7 @@ export class ParticipantStack {
 			// Phase three -- Register organization in registry
       await this.g_registerOrganization(
         this.org.name,
-        this.fetchKeys()[2]["address"],
+        (await this.fetchKeys())[2]["address"],
         this.org.messaging_endpoint,
         this.natsBearerTokens[this.org.messaging_endpoint],
         this.babyJubJub?.publicKey!
