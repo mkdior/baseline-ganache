@@ -448,7 +448,7 @@ export class ParticipantStack {
     await this.collectionDropper(["merkle-trees"], merkleConnection.connection);
     await this.collectionDropper(
       ["organization", "user", "workgroup"],
-     (await this.identConnector()).connection 
+      (await this.identConnector()).connection
     );
   }
 
@@ -1183,12 +1183,6 @@ export class ParticipantStack {
       return Promise.reject("failed to register workgroup organization");
     }
 
-    // This is where the organization must be created for on-chain; this due to the fact
-    // that prior to this call we create all the keys necessary for on-chain registration.
-
-    // Either that or in the prior step we create the actual organization, register it and
-    // in here we just dump it into the actual workgroup.
-
     return (
       await Ident.clientFactory(
         this.workgroupToken,
@@ -1693,10 +1687,8 @@ export class ParticipantStack {
     promises.push(
       new Promise((resolve, reject) => {
         interval = setInterval(async () => {
-          console.log(`Requiring ${type}`);
           this.resolveWorkgroupContract(type)
             .then((cntrct) => {
-              console.log(`Resolved ${cntrct}`);
               contract = cntrct;
               resolve();
             })
@@ -1767,49 +1759,51 @@ export class ParticipantStack {
     //  },
     //});
 
-    const identOrganization = (await this.identConnector()).service.createOrganization({
-			createdAt: new Date().toString(),
-      name: name,
-      userId: `${uuid4()}`,
-      description: ``,
-			metadata: {
-				messaging_endpoint: messagingEndpoint
-			}
-		});
+    // Phase one -- Register organization locally
+    const identOrganization = (await this.identConnector()).service
+      .createOrganization({
+        createdAt: new Date().toString(),
+        name: name,
+        userId: `${uuid4()}`,
+        description: ``,
+        metadata: {
+          messaging_endpoint: messagingEndpoint,
+        },
+      })
+      .then(async (org) => {
+        this.org = {
+          createdAt: org["createdAt"],
+          description: org["description"],
+          id: org["_id"],
+          metadata: org["metadata"],
+          messaging_endpoint: org["metadata"]["messaging_endpoint"],
+          name: org["name"],
+          userId: org["userId"],
+        };
+      });
 
-		identOrganization.then(async (v) => {
-			const retOrg = await (await this.identConnector()).service.IdentTables.OrganizationModel.find({});
-			
-			console.log(`RetOrg: ${JSON.stringify(retOrg, undefined, 2)}`);
-			console.log(`Ident Organization: ${JSON.stringify(v, undefined, 2)}`);
-		});
+    if (this.org) {
+      // Phase two -- Create our keys
+      const vault = await this.requireVault();
+      // Our ZKP keypair
+      this.babyJubJub = await this.createVaultKey(vault.id!, "babyJubJub");
+      // Our organization keypair
+      await this.createVaultKey(vault.id!, "secp256k1");
+      this.hdwallet = await this.createVaultKey(vault.id!, "BIP39");
 
-    return;
+			// Phase three -- Register organization in registry
+      await this.g_registerOrganization(
+        this.org.name,
+        this.fetchKeys()[2]["address"],
+        this.org.messaging_endpoint,
+        this.natsBearerTokens[this.org.messaging_endpoint],
+        this.babyJubJub?.publicKey!
+      );
 
-//    this.org = await this.g_registerOrganization(
-//      name,
-//      messagingEndpoint,
-//      (await this.getNatsBearerTokens())[messagingEndpoint] || "0x0"
-//    );
-//
-//    if (this.org) {
-//      const vault = await this.requireVault();
-//      this.babyJubJub = await this.createVaultKey(vault.id!, "babyJubJub");
-//      await this.createVaultKey(vault.id!, "secp256k1");
-//      this.hdwallet = await this.createVaultKey(vault.id!, "BIP39");
-//
-//      await this.registerWorkgroupOrganization();
-//    }
-//
-//    console.log(
-//      `Organization key = ${JSON.stringify(
-//        (await this.fetchKeys())[2],
-//        undefined,
-//        2
-//      )}`
-//    );
-//
-//    return this.org;
+      await this.registerWorkgroupOrganization();
+    }
+
+    return this.org;
   }
 
   async g_retrieveOrganization(address: any): Promise<any> {
