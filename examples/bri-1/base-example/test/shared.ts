@@ -1,3 +1,4 @@
+import { doesNotReject } from 'assert';
 import { assert } from 'chai';
 import { promisedTimeout } from './utils';
 
@@ -18,8 +19,8 @@ export const shouldBehaveLikeAWorkgroupOrganization = function () {
       let workflowIdentifier;
 
       before(async () => {
-        erc1820Registry = await this.ctx.app.requireWorkgroupContract('erc1820-registry');
-        orgRegistry = await this.ctx.app.requireWorkgroupContract('organization-registry');
+        erc1820Registry = this.ctx.app.getWorkgroupContractGanache('erc1820-registry');
+        orgRegistry = this.ctx.app.getWorkgroupContractGanache('organization-registry');
         shield = this.ctx.app.getWorkgroupContractGanache('shield');
         verifier = this.ctx.app.getWorkgroupContractGanache('verifier');
         workflowIdentifier = this.ctx.app.getWorkflowIdentifier();
@@ -80,8 +81,6 @@ export const shouldBehaveLikeAWorkgroupOrganization = function () {
       let address;
 
       before(async () => {
-				//TODO::(Hamza) -- CONT
-				console.log(`1`);
         const keys = await this.ctx.app.fetchKeys();
         address = keys && keys.length >= 3 ? keys[2].address : null;
         assert(address, 'default secp256k1 keypair should not be null');

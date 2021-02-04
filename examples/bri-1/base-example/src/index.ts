@@ -267,8 +267,9 @@ export class ParticipantStack {
       }
     );
 
-    if (this.natsConfig?.natsBearerTokens) {
-      this.natsBearerTokens = this.natsConfig.natsBearerTokens;
+    if (this.natsConfig?.bearerToken) {
+      //this.natsBearerTokens = this.natsConfig.natsBearerTokens;
+      this.natsBearerTokens[this.natsConfig.natsServers[0]] = this.natsConfig.bearerToken;
     }
 
     dv.config();
@@ -1257,29 +1258,29 @@ export class ParticipantStack {
       "organization-registry"
     );
 
-    const nchain = nchainClientFactory(
-      this.workgroupToken,
-      this.baselineConfig?.nchainApiScheme,
-      this.baselineConfig?.nchainApiHost
-    );
+    //const nchain = nchainClientFactory(
+    //  this.workgroupToken,
+    //  this.baselineConfig?.nchainApiScheme,
+    //  this.baselineConfig?.nchainApiHost
+    //);
     // https://docs.provide.services/api/nchain/signing/accounts#create-account
     // Signer
-    const signerResp = await nchain.createAccount({
-      network_id: this.baselineConfig?.networkId,
-    });
+    //const signerResp = await nchain.createAccount({
+    //  network_id: this.baselineConfig?.networkId,
+    //});
 
-    const resp = await NChain.clientFactory(
-      this.workgroupToken,
-      this.baselineConfig?.nchainApiScheme,
-      this.baselineConfig?.nchainApiHost
-    ).executeContract(orgRegistryContract.id, {
-      method: "getOrg",
-      params: [address],
-      value: 0,
-      account_id: signerResp["id"],
-    });
+    //const resp = await NChain.clientFactory(
+    //  this.workgroupToken,
+    //  this.baselineConfig?.nchainApiScheme,
+    //  this.baselineConfig?.nchainApiHost
+    //).executeContract(orgRegistryContract.id, {
+    //  method: "getOrg",
+    //  params: [address],
+    //  value: 0,
+    //  account_id: signerResp["id"],
+    //});
 
-    //const resp = await this.g_retrieveOrganization(address);
+    const resp = await this.g_retrieveOrganization(address);
 
     if (
       resp &&
@@ -1734,7 +1735,7 @@ export class ParticipantStack {
     //
     // createdAt: 2021-01-22T09:30:37.2481415Z
     // description: null
-    // ie: 4f7df75f-8521-4e76-a61e-72501c7cbe0d
+    // id: 4f7df75f-8521-4e76-a61e-72501c7cbe0d
     // metadata:
     // messaging_endpoint: nats://localhost:4224
     // name: Bob Corp
@@ -1746,6 +1747,15 @@ export class ParticipantStack {
     //    messaging_endpoint: messagingEndpoint,
     //  },
     //});
+
+    // Required so that vault accepts our token :) Locally generated
+    // id's hold no value in the Provide eco-system.
+    const orgTokenVoucher = (await this.baseline?.createOrganization({
+      name: name,
+      metadata: {
+        messaging_endpoint: messagingEndpoint,
+      },
+    })).id;
 
     // Phase one -- Register organization locally
     const identOrganization = await (await this.identConnector()).service
@@ -1762,7 +1772,7 @@ export class ParticipantStack {
         this.org = JSON.parse(JSON.stringify({
           createdAt: org["createdAt"],
           description: org["description"],
-          id: org["_id"],
+          id: orgTokenVoucher,
           metadata: org["metadata"],
           messaging_endpoint: org["metadata"]["messaging_endpoint"],
           name: org["name"],
@@ -1779,14 +1789,18 @@ export class ParticipantStack {
       await this.createVaultKey(vault.id!, "secp256k1");
       this.hdwallet = await this.createVaultKey(vault.id!, "BIP39");
 
+      console.log(
+        "Org Address: " + (await this.fetchKeys())[2].address
+        );
+
       // Phase three -- Register organization in registry
-      await this.g_registerOrganization(
+      let resp = await this.g_registerOrganization(
         this.org.name,
         (await this.fetchKeys())[2].address,
         this.org.messaging_endpoint,
-        this.natsBearerTokens[this.org.messaging_endpoint],
+        this.natsBearerTokens[this.org.messaging_endpoint] || "0x",
         this.babyJubJub?.publicKey!
-      );
+      ).then((resp) => { return resp; });
 
 			console.log("Registered the organization!");
 
@@ -1855,9 +1869,11 @@ export class ParticipantStack {
       managedSigner
     );
 
-    const orgAddress = JSON.stringify(address, undefined, 2).match(
+    const orgAddress = JSON.stringify(address).match(
       new RegExp(/\b0x[a-zA-Z0-9]{40}\b/)
-    )![0];
+    )![0] || "0x";
+
+    console.log("orgAddress " + orgAddress);
 
     let regOrg = await registryConnector
       .registerOrg(
