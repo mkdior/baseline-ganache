@@ -1706,26 +1706,13 @@ export class ParticipantStack {
   }
 
   async resolveWorkgroupContract(type: string): Promise<any> {
-    const nchain = nchainClientFactory(
-      this.workgroupToken,
-      this.baselineConfig?.nchainApiScheme,
-      this.baselineConfig?.nchainApiHost
-    );
-
-    //const contracts = await nchain.fetchContracts({
-    //	type: type,
-    //});
-
     console.log("Stubbing " + type);
 
     if (
       this.ganacheContracts[type] &&
       this.ganacheContracts[type]["address"] !== "0x"
     ) {
-      //const contract = await nchain.fetchContractDetails(contracts[0].id!);
-      //this.contracts[type] = contract;
       this.contracts[type] = this.ganacheContracts[type];
-      //return Promise.resolve(contract);
       return Promise.resolve(this.ganacheContracts[type]);
     }
     return Promise.reject();
@@ -1761,7 +1748,7 @@ export class ParticipantStack {
     //});
 
     // Phase one -- Register organization locally
-    const identOrganization = (await this.identConnector()).service
+    const identOrganization = await (await this.identConnector()).service
       .createOrganization({
         createdAt: new Date().toString(),
         name: name,
@@ -1772,7 +1759,7 @@ export class ParticipantStack {
         },
       })
       .then(async (org) => {
-        this.org = {
+        this.org = JSON.parse(JSON.stringify({
           createdAt: org["createdAt"],
           description: org["description"],
           id: org["_id"],
@@ -1780,7 +1767,7 @@ export class ParticipantStack {
           messaging_endpoint: org["metadata"]["messaging_endpoint"],
           name: org["name"],
           userId: org["userId"],
-        };
+        }));
       });
 
     if (this.org) {
@@ -1800,6 +1787,8 @@ export class ParticipantStack {
         this.natsBearerTokens[this.org.messaging_endpoint],
         this.babyJubJub?.publicKey!
       );
+
+			console.log("Registered the organization!");
 
       await this.registerWorkgroupOrganization();
     }
