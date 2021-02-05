@@ -1253,7 +1253,7 @@ export class ParticipantStack {
   }
 
   async fetchOrganization(address: string): Promise<Organization> {
-    // fetchOrganization == On-chain registration??
+    // fetchOrganization == On-chain registration.
     const orgRegistryContract = await this.requireWorkgroupContract(
       "organization-registry"
     );
@@ -1794,7 +1794,7 @@ export class ParticipantStack {
         );
 
       // Phase three -- Register organization in registry
-      let resp = await this.g_registerOrganization(
+      const resp = await this.g_registerOrganization(
         this.org.name,
         (await this.fetchKeys())[2].address,
         this.org.messaging_endpoint,
@@ -1802,9 +1802,7 @@ export class ParticipantStack {
         this.babyJubJub?.publicKey!
       ).then((resp) => { return resp; });
 
-			console.log("Registered the organization!");
-
-      await this.registerWorkgroupOrganization();
+      const localOrganization = await this.registerWorkgroupOrganization();
     }
 
     return this.org;
@@ -1826,7 +1824,16 @@ export class ParticipantStack {
       managedSigner
     );
 
-    return org_registry_connector.getOrg(address);
+    return org_registry_connector.getOrg(address).then((rawOrg) => {
+        return {
+          address: rawOrg[0],
+          name: Eth.utils.parseBytes32String(rawOrg[1]),
+          messagingEndpoint: Eth.utils.toUtf8String(rawOrg[3]),
+          natsKey: Eth.utils.toUtf8String(rawOrg[4]),
+          zkpPublicKey: Eth.utils.toUtf8String(rawOrg[5]),
+          metadata: Eth.utils.toUtf8String(rawOrg[6]),
+        };
+    });
   }
 
   async g_registerOrganization(
@@ -1880,7 +1887,7 @@ export class ParticipantStack {
         orgAddress,
         Eth.utils.formatBytes32String(name),
         Eth.utils.toUtf8Bytes(messagingEndpoint),
-        Eth.utils.toUtf8Bytes(messagingBearerToken),
+        Eth.utils.toUtf8Bytes(messagingBearerToken), // TODO::(Hamza)
         Eth.utils.toUtf8Bytes(zkpPublicKey),
         Eth.utils.toUtf8Bytes("{}")
       )
@@ -1897,7 +1904,8 @@ export class ParticipantStack {
           // TODO::(Hamza) Check if this equals our secp256k1 key
           address: tempOrg[0],
           name: Eth.utils.parseBytes32String(tempOrg[1]),
-          messagingEndpoint: Eth.utils.toUtf8String(tempOrg[3]),
+          messagingEndpoint: Eth.utils.toUtf8String(tempOrg[2]),
+          natsKey: Eth.utils.toUtf8String(tempOrg[3]),
           zkpPublicKey: Eth.utils.toUtf8String(tempOrg[4]),
           metadata: Eth.utils.toUtf8String(tempOrg[5]),
         };
