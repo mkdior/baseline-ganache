@@ -269,7 +269,9 @@ export class ParticipantStack {
 
     if (this.natsConfig?.bearerToken) {
       //this.natsBearerTokens = this.natsConfig.natsBearerTokens;
-      this.natsBearerTokens[this.natsConfig.natsServers[0]] = this.natsConfig.bearerToken;
+      this.natsBearerTokens[
+        this.natsConfig.natsServers[0]
+      ] = this.natsConfig.bearerToken;
     }
 
     dv.config();
@@ -453,7 +455,7 @@ export class ParticipantStack {
     );
   }
 
-	// TODO::(Hamza) -- Scan for and delete Ident collections.
+  // TODO::(Hamza) -- Scan for and delete Ident collections.
   private async collectionDropper(
     names: string[],
     con: mongoose.Connection
@@ -1280,19 +1282,24 @@ export class ParticipantStack {
     //  account_id: signerResp["id"],
     //});
 
-    const resp = await this.g_retrieveOrganization(address);
+    const resp = await this.g_retrieveOrganization(address).catch((err) =>
+      console.log(
+        `Error while fetching organization under the following address: ${address}. Error details: \n ${JSON.stringify(
+          err,
+          undefined,
+          2
+        )}`
+      )
+    );
 
-    if (
-      resp &&
-      resp["response"] &&
-      resp["response"][0] !== "0x0000000000000000000000000000000000000000"
-    ) {
+    if (resp) {
       const org = {} as Organization;
-      org.name = resp["response"][1].toString();
-      org["address"] = resp["response"][0];
-      org["config"] = JSON.parse(atob(resp["response"][5]));
-      org["config"]["messaging_endpoint"] = atob(resp["response"][2]);
-      org["config"]["zk_public_key"] = atob(resp["response"][4]);
+      org["name"] = resp["name"];
+      org["address"] = resp["address"];
+      //org["config"] = JSON.parse(atob(resp["response"][5]));
+      org["config"]["messaging_endpoint"] = resp["messagingEndpoint"];
+      org["config"]["zk_public_key"] = resp["zkpPublicKey"];
+      org["config"]["nats_bearer_token"] = resp["natsKey"];
       return Promise.resolve(org);
     }
 
@@ -1750,12 +1757,14 @@ export class ParticipantStack {
 
     // Required so that vault accepts our token :) Locally generated
     // id's hold no value in the Provide eco-system.
-    const orgTokenVoucher = (await this.baseline?.createOrganization({
-      name: name,
-      metadata: {
-        messaging_endpoint: messagingEndpoint,
-      },
-    })).id;
+    const orgTokenVoucher = (
+      await this.baseline?.createOrganization({
+        name: name,
+        metadata: {
+          messaging_endpoint: messagingEndpoint,
+        },
+      })
+    ).id;
 
     // Phase one -- Register organization locally
     const identOrganization = await (await this.identConnector()).service
@@ -1769,15 +1778,17 @@ export class ParticipantStack {
         },
       })
       .then(async (org) => {
-        this.org = JSON.parse(JSON.stringify({
-          createdAt: org["createdAt"],
-          description: org["description"],
-          id: orgTokenVoucher,
-          metadata: org["metadata"],
-          messaging_endpoint: org["metadata"]["messaging_endpoint"],
-          name: org["name"],
-          userId: org["userId"],
-        }));
+        this.org = JSON.parse(
+          JSON.stringify({
+            createdAt: org["createdAt"],
+            description: org["description"],
+            id: orgTokenVoucher,
+            metadata: org["metadata"],
+            messaging_endpoint: org["metadata"]["messaging_endpoint"],
+            name: org["name"],
+            userId: org["userId"],
+          })
+        );
       });
 
     if (this.org) {
@@ -1789,9 +1800,7 @@ export class ParticipantStack {
       await this.createVaultKey(vault.id!, "secp256k1");
       this.hdwallet = await this.createVaultKey(vault.id!, "BIP39");
 
-      console.log(
-        "Org Address: " + (await this.fetchKeys())[2].address
-        );
+      console.log("Org Address: " + (await this.fetchKeys())[2].address);
 
       // Phase three -- Register organization in registry
       const resp = await this.g_registerOrganization(
@@ -1800,7 +1809,9 @@ export class ParticipantStack {
         this.org.messaging_endpoint,
         this.natsBearerTokens[this.org.messaging_endpoint] || "0x",
         this.babyJubJub?.publicKey!
-      ).then((resp) => { return resp; });
+      ).then((resp) => {
+        return resp;
+      });
 
       const localOrganization = await this.registerWorkgroupOrganization();
     }
@@ -1818,22 +1829,25 @@ export class ParticipantStack {
     const signer = provider.getSigner((await provider.listAccounts())[2]);
     const managedSigner = new NonceManager(signer);
 
-    const org_registry_connector = new Eth.Contract(
+    const orgConnector = new Eth.Contract(
       orgRegistryContract.address,
       registry_abi,
       managedSigner
     );
 
-    return org_registry_connector.getOrg(address).then((rawOrg) => {
-        return {
+    return await orgConnector
+      .getOrg(address)
+      .then((rawOrg) => {
+        return Promise.resolve({
           address: rawOrg[0],
           name: Eth.utils.parseBytes32String(rawOrg[1]),
-          messagingEndpoint: Eth.utils.toUtf8String(rawOrg[3]),
-          natsKey: Eth.utils.toUtf8String(rawOrg[4]),
-          zkpPublicKey: Eth.utils.toUtf8String(rawOrg[5]),
-          metadata: Eth.utils.toUtf8String(rawOrg[6]),
-        };
-    });
+          messagingEndpoint: Eth.utils.toUtf8String(rawOrg[2]),
+          natsKey: Eth.utils.toUtf8String(rawOrg[3]),
+          zkpPublicKey: Eth.utils.toUtf8String(rawOrg[4]),
+          metadata: Eth.utils.toUtf8String(rawOrg[5]),
+        });
+      })
+      .catch((err) => Promise.reject(err));
   }
 
   async g_registerOrganization(
@@ -1876,9 +1890,9 @@ export class ParticipantStack {
       managedSigner
     );
 
-    const orgAddress = JSON.stringify(address).match(
-      new RegExp(/\b0x[a-zA-Z0-9]{40}\b/)
-    )![0] || "0x";
+    const orgAddress =
+      JSON.stringify(address).match(new RegExp(/\b0x[a-zA-Z0-9]{40}\b/))![0] ||
+      "0x";
 
     console.log("orgAddress " + orgAddress);
 
@@ -1887,7 +1901,9 @@ export class ParticipantStack {
         orgAddress,
         Eth.utils.formatBytes32String(name),
         Eth.utils.toUtf8Bytes(messagingEndpoint),
-        Eth.utils.toUtf8Bytes(messagingBearerToken), // TODO::(Hamza)
+        // TODO:: Really not sure what should happen with this one.
+        // Is WhisperKey still even used? If so, what is it?
+        Eth.utils.toUtf8Bytes(messagingBearerToken),
         Eth.utils.toUtf8Bytes(zkpPublicKey),
         Eth.utils.toUtf8Bytes("{}")
       )
