@@ -438,40 +438,31 @@ export class ParticipantStack {
       "/" +
       `${process.env.B_DATABASE_NAME}`;
 
-    // Replace database name then remove the username/password. If
-    // sourcing credentials from admin db leave the last replace commented.
-    let dbIdent =
-      dbCommit.replace(new RegExp(/\b\/[a-zA-Z]*\b/), "/ident") +
-      "?authSource=admin"; //.replace(new RegExp(/\b[a-zA-Z]*:[a-zA-Z0-9]*@\b/), "");
-
     // See https://github.com/Automattic/mongoose/issues/9335
     let merkleConnection = await mongoose.connect(dbCommit, config.mongoose);
 
     // Clear out all previous collections if there are any
     await this.collectionDropper(["merkle-trees"], merkleConnection.connection);
-    await this.collectionDropper(
-      ["organization", "user", "workgroup"],
-      (await this.identConnector()).connection
-    );
+		await this.collectionDropper(["organization", "user", "workgroup"], (await this.identConnector()).connection);
   }
 
   // TODO::(Hamza) -- Scan for and delete Ident collections.
-  private async collectionDropper(
-    names: string[],
-    con: mongoose.Connection
-  ): Promise<any> {
-    for (var name of names) {
-      await con.db.listCollections().toArray(async (err, collections) => {
-        if (collections && collections.length > 0) {
-          for (var collection of collections) {
-            if (collection.name === name) {
-              console.log(`Found an old ${name} collection; delete.`);
-              await con.db.dropCollection(name);
-            }
-          }
-        }
-      });
-    }
+	private async collectionDropper(
+		names: string[],
+		con: mongoose.Connection
+	): Promise<any> {
+		for (var name of names) {
+			con.db.listCollections().toArray(async (err, collections) => {
+				if (collections && collections.length > 0) {
+					for (var collection of collections) {
+						if (collection.name === name) {
+							console.log(`Found an old ${name} collection; delete.`);
+							await con.db.dropCollection(name);
+						}
+					}
+				}
+			});
+		}
   }
 
   private async identConnector(): Promise<any> {
@@ -543,9 +534,9 @@ export class ParticipantStack {
     const treeHeight = 2;
     const sender = (await provider.listAccounts())[2];
 
-    let verifierAddress,
-      shieldAddress,
-      erc1820Address,
+		let verifierAddress,
+			shieldAddress,
+			erc1820Address,
       orgRegistryAddress: string;
 
     // Begin Verifier Contract
@@ -1296,10 +1287,11 @@ export class ParticipantStack {
       const org = {} as Organization;
       org["name"] = resp["name"];
       org["address"] = resp["address"];
-      //org["config"] = JSON.parse(atob(resp["response"][5]));
+			org["config"] = {"messaging_endpoint": "", "zk_public_key": "", "nats_bearer_token": ""};
       org["config"]["messaging_endpoint"] = resp["messagingEndpoint"];
       org["config"]["zk_public_key"] = resp["zkpPublicKey"];
       org["config"]["nats_bearer_token"] = resp["natsKey"];
+
       return Promise.resolve(org);
     }
 
@@ -1608,15 +1600,15 @@ export class ParticipantStack {
       email: email,
       permissions: 0,
       params: {
-        erc1820_registry_contract_address: this.contracts["erc1820-registry"]
+        erc1820_registry_contract_address: this.ganacheContracts["erc1820-registry"]
           .address,
         invitor_organization_address: await this.resolveOrganizationAddress(),
         authorized_bearer_token: await this.vendNatsAuthorization(),
-        organization_registry_contract_address: this.contracts[
+        organization_registry_contract_address: this.ganacheContracts[
           "organization-registry"
         ].address,
-        shield_contract_address: this.contracts["shield"].address,
-        verifier_contract_address: this.contracts["verifier"].address,
+        shield_contract_address: this.ganacheContracts["shield"].address,
+        verifier_contract_address: this.ganacheContracts["verifier"].address,
         workflow_identifier: this.workflowIdentifier,
       },
     });
@@ -1650,6 +1642,7 @@ export class ParticipantStack {
         interval = setInterval(async () => {
           this.fetchOrganization(address)
             .then((org) => {
+							console.log(`org[address] == addres? : ${org["address"].toLowerCase() === address.toLowerCase()}`);
               if (
                 org &&
                 org["address"].toLowerCase() === address.toLowerCase()
@@ -1658,7 +1651,9 @@ export class ParticipantStack {
                 resolve();
               }
             })
-            .catch((err) => {});
+            .catch((err) => {
+							reject(err);
+						});
         }, 5000);
       })
     );
