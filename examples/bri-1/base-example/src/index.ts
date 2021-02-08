@@ -446,7 +446,7 @@ export class ParticipantStack {
 		await this.collectionDropper(["organization", "user", "workgroup"], (await this.identConnector()).connection);
   }
 
-  // TODO::(Hamza) -- Scan for and delete Ident collections.
+	// TODO::(Hamza) -- Scan for and delete Ident collections.
 	private async collectionDropper(
 		names: string[],
 		con: mongoose.Connection
@@ -463,7 +463,7 @@ export class ParticipantStack {
 				}
 			});
 		}
-  }
+	}
 
   private async identConnector(): Promise<any> {
     if (this.identService && this.identConnection) {
@@ -866,7 +866,7 @@ export class ParticipantStack {
 
     await this.createWorkgroup(this.baselineConfig.workgroupName);
 
-    this.contracts = {
+    this.ganacheContracts = this.contracts = {
       "erc1820-registry": {
         address: invite.prvd.data.params.erc1820_registry_contract_address,
         name: "ERC1820Registry",
@@ -907,11 +907,18 @@ export class ParticipantStack {
       },
     };
 
+		console.log('Nchain client factory -- pre initialization');
+
     const nchain = nchainClientFactory(
       this.workgroupToken,
       this.baselineConfig?.nchainApiScheme,
       this.baselineConfig?.nchainApiHost
     );
+
+		console.log('Nchain client factory -- post initialization');
+
+		console.log(`Pre-createContract erc1820: ${JSON.stringify(this.contracts["erc1820-registry"], undefined, 2)}`);
+		console.log(`Pre-createContract org_reg: ${JSON.stringify(this.contracts["organization-registry"], undefined, 2)}`);
 
     this.contracts["erc1820-registry"] = await nchain.createContract(
       this.contracts["erc1820-registry"]
@@ -919,12 +926,20 @@ export class ParticipantStack {
     this.contracts["organization-registry"] = await nchain.createContract(
       this.contracts["organization-registry"]
     );
-    this.contracts["shield"] = await nchain.createContract(
-      this.contracts["shield"]
-    );
-    this.contracts["verifier"] = await nchain.createContract(
-      this.contracts["verifier"]
-    );
+
+		console.log(`Post-createContract erc1820: ${JSON.stringify(this.contracts["erc1820-registry"], undefined, 2)}`);
+		console.log(`Post-createContract org_reg: ${JSON.stringify(this.contracts["organization-registry"], undefined, 2)}`);
+
+
+
+//    this.contracts["shield"] = await nchain.createContract(
+//      this.contracts["shield"]
+//    );
+//    this.contracts["verifier"] = await nchain.createContract(
+//      this.contracts["verifier"]
+//    );
+
+return;
 
     const counterpartyAddr =
       invite.prvd.data.params.invitor_organization_address;
@@ -1590,46 +1605,46 @@ export class ParticipantStack {
     return shieldContract.address;
   }
 
-  async inviteWorkgroupParticipant(email: string): Promise<Invite> {
-    return await Ident.clientFactory(
-      this.baselineConfig?.token,
-      this.baselineConfig?.identApiScheme,
-      this.baselineConfig?.identApiHost
-    ).createInvitation({
-      application_id: this.workgroup.id,
-      email: email,
-      permissions: 0,
-      params: {
-        erc1820_registry_contract_address: this.ganacheContracts["erc1820-registry"]
-          .address,
-        invitor_organization_address: await this.resolveOrganizationAddress(),
-        authorized_bearer_token: await this.vendNatsAuthorization(),
-        organization_registry_contract_address: this.ganacheContracts[
-          "organization-registry"
-        ].address,
-        shield_contract_address: this.ganacheContracts["shield"].address,
-        verifier_contract_address: this.ganacheContracts["verifier"].address,
-        workflow_identifier: this.workflowIdentifier,
-      },
-    });
+	async inviteWorkgroupParticipant(email: string): Promise<Invite> {
+		return await Ident.clientFactory(
+			this.baselineConfig?.token,
+			this.baselineConfig?.identApiScheme,
+			this.baselineConfig?.identApiHost
+		).createInvitation({
+			application_id: this.workgroup.id,
+			email: email,
+			permissions: 0,
+			params: {
+				erc1820_registry_contract_address: this.ganacheContracts["erc1820-registry"]
+					.address,
+				invitor_organization_address: await this.resolveOrganizationAddress(),
+				authorized_bearer_token: await this.vendNatsAuthorization(),
+				organization_registry_contract_address: this.ganacheContracts[
+					"organization-registry"
+				].address,
+				shield_contract_address: this.ganacheContracts["shield"].address,
+				verifier_contract_address: this.ganacheContracts["verifier"].address,
+				workflow_identifier: this.workflowIdentifier,
+			},
+		});
   }
 
-  private async requireCapabilities(): Promise<void> {
-    let interval;
-    const promises = [] as any;
-    promises.push(
-      new Promise((resolve, reject) => {
-        interval = setInterval(async () => {
-          if (this.capabilities?.getBaselineRegistryContracts()) {
-            resolve();
-          }
-        }, 2500);
-      })
-    );
+	private async requireCapabilities(): Promise<void> {
+		let interval;
+		const promises = [] as any;
+		promises.push(
+			new Promise((resolve, reject) => {
+				interval = setInterval(async () => {
+					if (this.capabilities?.getBaselineRegistryContracts()) {
+						resolve();
+					}
+				}, 2500);
+			})
+		);
 
-    await Promise.all(promises);
-    clearInterval(interval);
-    interval = null;
+		await Promise.all(promises);
+		clearInterval(interval);
+		interval = null;
   }
 
   async requireOrganization(address: string): Promise<Organization> {
