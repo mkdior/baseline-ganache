@@ -910,25 +910,25 @@ export class ParticipantStack {
       },
     };
 
-    const nchain = nchainClientFactory(
-      this.workgroupToken,
-      this.baselineConfig?.nchainApiScheme,
-      this.baselineConfig?.nchainApiHost
-    );
+    //const nchain = nchainClientFactory(
+    //  this.workgroupToken,
+    //  this.baselineConfig?.nchainApiScheme,
+    //  this.baselineConfig?.nchainApiHost
+    //);
 
-    this.contracts["erc1820-registry"] = await nchain.createContract(
-      this.contracts["erc1820-registry"]
-    );
-    this.contracts["organization-registry"] = await nchain.createContract(
-      this.contracts["organization-registry"]
-    );
+    //this.contracts["erc1820-registry"] = await nchain.createContract(
+    //  this.contracts["erc1820-registry"]
+    //);
+    //this.contracts["organization-registry"] = await nchain.createContract(
+    //  this.contracts["organization-registry"]
+    //);
 
-    this.contracts["shield"] = await nchain.createContract(
-      this.contracts["shield"]
-    );
-    this.contracts["verifier"] = await nchain.createContract(
-      this.contracts["verifier"]
-    );
+    //this.contracts["shield"] = await nchain.createContract(
+    //  this.contracts["shield"]
+    //);
+    //this.contracts["verifier"] = await nchain.createContract(
+    //  this.contracts["verifier"]
+    //);
 
     const counterpartyAddr =
       invite.prvd.data.params.invitor_organization_address;
@@ -1864,6 +1864,7 @@ export class ParticipantStack {
     const orgRegistryContract = await this.requireWorkgroupContract(
       "organization-registry"
     );
+    // Not filled with params when running from Alice's side.
     const registry_abi = orgRegistryContract.params.compiled_artifacts.abi;
     const url = "http://0.0.0.0:8545";
     const provider = new Eth.providers.JsonRpcProvider(url);
