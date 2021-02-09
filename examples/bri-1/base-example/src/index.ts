@@ -70,6 +70,9 @@ import mongoose from "mongoose";
 import { resolve } from "dns";
 import { IdentWrapper } from "../../../bri-2/commit-mgr/src/db/controllers/Ident";
 import { NonceManager } from "@ethersproject/experimental";
+import {
+	scrapeInvitationToken,
+} from "../test/utils";
 
 // const baselineDocumentCircuitPath = '../../../lib/circuits/createAgreement.zok';
 const baselineDocumentCircuitPath = "../../../lib/circuits/noopAgreement.zok";
@@ -861,7 +864,7 @@ export class ParticipantStack {
     ) {
       return Promise.reject("failed to accept workgroup invite");
     }
-
+	
     const invite = jwt.decode(inviteToken) as { [key: string]: any };
 
     await this.createWorkgroup(this.baselineConfig.workgroupName);
@@ -907,18 +910,11 @@ export class ParticipantStack {
       },
     };
 
-		console.log('Nchain client factory -- pre initialization');
-
     const nchain = nchainClientFactory(
       this.workgroupToken,
       this.baselineConfig?.nchainApiScheme,
       this.baselineConfig?.nchainApiHost
     );
-
-		console.log('Nchain client factory -- post initialization');
-
-		console.log(`Pre-createContract erc1820: ${JSON.stringify(this.contracts["erc1820-registry"], undefined, 2)}`);
-		console.log(`Pre-createContract org_reg: ${JSON.stringify(this.contracts["organization-registry"], undefined, 2)}`);
 
     this.contracts["erc1820-registry"] = await nchain.createContract(
       this.contracts["erc1820-registry"]
@@ -927,34 +923,41 @@ export class ParticipantStack {
       this.contracts["organization-registry"]
     );
 
-		console.log(`Post-createContract erc1820: ${JSON.stringify(this.contracts["erc1820-registry"], undefined, 2)}`);
-		console.log(`Post-createContract org_reg: ${JSON.stringify(this.contracts["organization-registry"], undefined, 2)}`);
-
-
-
-//    this.contracts["shield"] = await nchain.createContract(
-//      this.contracts["shield"]
-//    );
-//    this.contracts["verifier"] = await nchain.createContract(
-//      this.contracts["verifier"]
-//    );
-
-return;
+    this.contracts["shield"] = await nchain.createContract(
+      this.contracts["shield"]
+    );
+    this.contracts["verifier"] = await nchain.createContract(
+      this.contracts["verifier"]
+    );
 
     const counterpartyAddr =
       invite.prvd.data.params.invitor_organization_address;
+
     this.workgroupCounterparties.push(counterpartyAddr);
 
+		//TODO::(Hamza) -- Messes up here.. -- 1
     const messagingEndpoint = await this.resolveMessagingEndpoint(
       counterpartyAddr
     );
+
+		console.log(`4`);
+
     this.natsBearerTokens[messagingEndpoint] =
       invite.prvd.data.params.authorized_bearer_token;
+
+		console.log(`5`);
+
     this.workflowIdentifier = invite.prvd.data.params.workflow_identifier;
+
+		console.log(`6`);
 
     await this.baseline
       ?.track(invite.prvd.data.params.shield_contract_address)
       .catch((err) => {});
+
+		console.log(`7`);
+
+			console.log(` Registering Alice under name: ${this.baselineConfig.orgName}`);
 
     // Register organization on-chain.
     await this.registerOrganization(
@@ -1064,7 +1067,9 @@ return;
   }
 
   async resolveMessagingEndpoint(addr: string): Promise<string> {
+	 //TODO::(Hamza) -- Messes up here.. -- 2
     const org = await this.fetchOrganization(addr);
+
     if (!org) {
       return Promise.reject(`organization not resolved: ${addr}`);
     }
@@ -1260,57 +1265,61 @@ return;
     return Promise.reject("failed to resolve organization address");
   }
 
-  async fetchOrganization(address: string): Promise<Organization> {
-    // fetchOrganization == On-chain registration.
-    const orgRegistryContract = await this.requireWorkgroupContract(
-      "organization-registry"
-    );
+	async fetchOrganization(address: string): Promise<Organization> {
+		// fetchOrganization == On-chain registration.
+		const orgRegistryContract = await this.requireWorkgroupContract(
+			"organization-registry"
+		);
 
-    //const nchain = nchainClientFactory(
-    //  this.workgroupToken,
-    //  this.baselineConfig?.nchainApiScheme,
-    //  this.baselineConfig?.nchainApiHost
-    //);
-    // https://docs.provide.services/api/nchain/signing/accounts#create-account
-    // Signer
-    //const signerResp = await nchain.createAccount({
-    //  network_id: this.baselineConfig?.networkId,
-    //});
+		//const nchain = nchainClientFactory(
+		//  this.workgroupToken,
+		//  this.baselineConfig?.nchainApiScheme,
+		//  this.baselineConfig?.nchainApiHost
+		//);
+		// https://docs.provide.services/api/nchain/signing/accounts#create-account
+		// Signer
+		//const signerResp = await nchain.createAccount({
+		//  network_id: this.baselineConfig?.networkId,
+		//});
 
-    //const resp = await NChain.clientFactory(
-    //  this.workgroupToken,
-    //  this.baselineConfig?.nchainApiScheme,
-    //  this.baselineConfig?.nchainApiHost
-    //).executeContract(orgRegistryContract.id, {
-    //  method: "getOrg",
-    //  params: [address],
-    //  value: 0,
-    //  account_id: signerResp["id"],
-    //});
+		//const resp = await NChain.clientFactory(
+		//  this.workgroupToken,
+		//  this.baselineConfig?.nchainApiScheme,
+		//  this.baselineConfig?.nchainApiHost
+		//).executeContract(orgRegistryContract.id, {
+		//  method: "getOrg",
+		//  params: [address],
+		//  value: 0,
+		//  account_id: signerResp["id"],
+		//});
 
-    const resp = await this.g_retrieveOrganization(address).catch((err) =>
-      console.log(
-        `Error while fetching organization under the following address: ${address}. Error details: \n ${JSON.stringify(
-          err,
-          undefined,
-          2
-        )}`
-      )
-    );
+		const resp = await this.g_retrieveOrganization(address).then((org) => org).catch((err) =>
+			console.log(
+				`Error while fetching organization under : ${address}. Error details: \n ${JSON.stringify(
+					err,
+					undefined,
+					2
+				)} \n Currently identified as ${this.org.name} under ${this.org.address}`
+			)
+		);
 
-    if (resp) {
-      const org = {} as Organization;
-      org["name"] = resp["name"];
-      org["address"] = resp["address"];
-			org["config"] = {"messaging_endpoint": "", "zk_public_key": "", "nats_bearer_token": ""};
-      org["config"]["messaging_endpoint"] = resp["messagingEndpoint"];
-      org["config"]["zk_public_key"] = resp["zkpPublicKey"];
-      org["config"]["nats_bearer_token"] = resp["natsKey"];
+		if (resp) {
+			const org = {} as Organization;
+			org["name"] = resp["name"];
+			org["address"] = resp["address"];
+			org["config"] = {
+				"messaging_endpoint": "",
+				"zk_public_key": "",
+				"nats_bearer_token": ""
+			};
+			org["config"]["messaging_endpoint"] = resp["messagingEndpoint"];
+			org["config"]["zk_public_key"] = resp["zkpPublicKey"];
+			org["config"]["nats_bearer_token"] = resp["natsKey"];
 
-      return Promise.resolve(org);
-    }
+			return Promise.resolve(org);
+		}
 
-    return Promise.reject(`failed to fetch organization ${address}`);
+		return Promise.reject(`failed to fetch organization ${address}`);
   }
 
   async fetchVaults(): Promise<ProvideVault[]> {
@@ -1605,8 +1614,13 @@ return;
     return shieldContract.address;
   }
 
-	async inviteWorkgroupParticipant(email: string): Promise<Invite> {
-		return await Ident.clientFactory(
+	async inviteWorkgroupParticipant(email: string): Promise<string> {
+		const bobOrg = await this.resolveOrganizationAddress();
+
+		console.log('While creating invitation, this is bob\'s address: ' + bobOrg);
+
+		// Send invite
+		await Ident.clientFactory(
 			this.baselineConfig?.token,
 			this.baselineConfig?.identApiScheme,
 			this.baselineConfig?.identApiHost
@@ -1614,19 +1628,36 @@ return;
 			application_id: this.workgroup.id,
 			email: email,
 			permissions: 0,
-			params: {
-				erc1820_registry_contract_address: this.ganacheContracts["erc1820-registry"]
-					.address,
-				invitor_organization_address: await this.resolveOrganizationAddress(),
-				authorized_bearer_token: await this.vendNatsAuthorization(),
-				organization_registry_contract_address: this.ganacheContracts[
-					"organization-registry"
-				].address,
-				shield_contract_address: this.ganacheContracts["shield"].address,
-				verifier_contract_address: this.ganacheContracts["verifier"].address,
-				workflow_identifier: this.workflowIdentifier,
-			},
+			local_invitor: bobOrg,
 		});
+
+		// We now have to decode and encode the token once agian to replace the values.
+		// It's either that or construct a brand new token. But since there might be
+		// values we still need; i'm opting for the former. Ident cross-references all
+		// values passed in with whatever is listed in its local registry. If we pass
+		// our own addresses they will get overwritten.
+
+		// Scrape invite
+		let inviteToken = await scrapeInvitationToken("bob-ident-consumer");
+
+		// Decode invite and reconstruct
+		let decodedInvite = jwt.decode(inviteToken) as {[key: string]: any};
+
+		decodedInvite.prvd.data.params = {
+			erc1820_registry_contract_address: this.ganacheContracts["erc1820-registry"]
+				.address,
+			invitor_organization_address: bobOrg,
+			authorized_bearer_token: await this.vendNatsAuthorization(),
+			organization_registry_contract_address: this.ganacheContracts[
+				"organization-registry"
+			].address,
+			shield_contract_address: this.ganacheContracts["shield"].address,
+			verifier_contract_address: this.ganacheContracts["verifier"].address,
+			workflow_identifier: this.workflowIdentifier,
+		};
+
+		// Time to sign the reconstructed object
+		return (Promise.resolve(jwt.sign(decodedInvite, '0x0')));
   }
 
 	private async requireCapabilities(): Promise<void> {
@@ -1657,7 +1688,7 @@ return;
         interval = setInterval(async () => {
           this.fetchOrganization(address)
             .then((org) => {
-							console.log(`org[address] == addres? : ${org["address"].toLowerCase() === address.toLowerCase()}`);
+							console.log(`org[address] == ${address}? : ${org["address"].toLowerCase() === address.toLowerCase()}`);
               if (
                 org &&
                 org["address"].toLowerCase() === address.toLowerCase()
@@ -1845,7 +1876,7 @@ return;
       managedSigner
     );
 
-    return await orgConnector
+    return (await orgConnector
       .getOrg(address)
       .then((rawOrg) => {
         return Promise.resolve({
@@ -1857,7 +1888,7 @@ return;
           metadata: Eth.utils.toUtf8String(rawOrg[5]),
         });
       })
-      .catch((err) => Promise.reject(err));
+      .catch((err) => Promise.reject(err)));
   }
 
   async g_registerOrganization(
