@@ -680,7 +680,7 @@ export class ParticipantStack {
         name: "ERC1820Registry",
         network_id: 0,
         params: {
-          compiled_artifact: erc1820Contract,
+          compiled_artifacts: erc1820Contract,
         },
         type: "erc1820-registry",
       },
@@ -738,10 +738,6 @@ export class ParticipantStack {
 
         if (payload.signatures.length === 0) {
           // baseline this new document
-
-          console.log(`Checking payload`);
-          console.log(`${JSON.stringify(payload, undefined, 2)}`);
-
           payload.result = await this.generateProof("preimage", payload);
 
           const signature = (
@@ -875,7 +871,7 @@ export class ParticipantStack {
         name: "ERC1820Registry",
         network_id: this.baselineConfig?.networkId,
         params: {
-          compiled_artifact:
+          compiled_artifacts:
             contracts["erc1820-registry"].params?.compiled_artifacts,
         },
         type: "erc1820-registry",
@@ -885,7 +881,7 @@ export class ParticipantStack {
         name: "OrgRegistry",
         network_id: this.baselineConfig?.networkId,
         params: {
-          compiled_artifact:
+          compiled_artifacts:
             contracts["organization-registry"].params?.compiled_artifacts,
         },
         type: "organization-registry",
@@ -895,7 +891,7 @@ export class ParticipantStack {
         name: "Shield",
         network_id: this.baselineConfig?.networkId,
         params: {
-          compiled_artifact: contracts["shield"].params?.compiled_artifacts,
+          compiled_artifacts: contracts["shield"].params?.compiled_artifacts,
         },
         type: "shield",
       },
@@ -904,7 +900,7 @@ export class ParticipantStack {
         name: "Verifier",
         network_id: this.baselineConfig?.networkId,
         params: {
-          compiled_artifact: contracts["verifier"].params?.compiled_artifacts,
+          compiled_artifacts: contracts["verifier"].params?.compiled_artifacts,
         },
         type: "verifier",
       },
@@ -933,30 +929,23 @@ export class ParticipantStack {
     const counterpartyAddr =
       invite.prvd.data.params.invitor_organization_address;
 
-		console.log(`2`);
     this.workgroupCounterparties.push(counterpartyAddr);
 
-		console.log(`3`);
     const messagingEndpoint = await this.resolveMessagingEndpoint(
       counterpartyAddr
     );
 
-		console.log(`4`);
 
     this.natsBearerTokens[messagingEndpoint] =
       invite.prvd.data.params.authorized_bearer_token;
 
-		console.log(`5`);
 
     this.workflowIdentifier = invite.prvd.data.params.workflow_identifier;
-
-		console.log(`6`);
 
     await this.baseline
       ?.track(invite.prvd.data.params.shield_contract_address)
       .catch((err) => {});
 
-		console.log(`7`);
 
 			console.log(` Registering Alice under name: ${this.baselineConfig.orgName}`);
 
@@ -977,15 +966,11 @@ export class ParticipantStack {
   }
 
   private marshalCircuitArg(val: string, fieldBits?: number): string[] {
-    console.log(val);
     const el = elementify(val) as Element;
     return el.field(fieldBits || 128, 1, true);
   }
 
   async generateProof(type: string, msg: any): Promise<any> {
-    console.log(`Checking msg -> generateProof`);
-    console.log(`${JSON.stringify(msg, undefined, 2)}`);
-
     const senderZkPublicKey = this.babyJubJub?.publicKey!;
     let commitment: string;
     let root: string | null = null;
@@ -1068,18 +1053,14 @@ export class ParticipantStack {
   }
 
   async resolveMessagingEndpoint(addr: string): Promise<string> {
-	 console.log('-- 1');
     const org = await this.fetchOrganization(addr);
-	 console.log('-- 2');
 
     if (!org) {
       return Promise.reject(`organization not resolved: ${addr}`);
     }
-	 console.log('-- 3');
 
     const messagingEndpoint = org["config"].messaging_endpoint;
 
-	 console.log('-- 4');
     if (!messagingEndpoint) {
       return Promise.reject(
         `organization messaging endpoint not resolved for recipient: ${addr}`
@@ -1272,7 +1253,6 @@ export class ParticipantStack {
 
 	async fetchOrganization(address: string): Promise<Organization> {
 		// fetchOrganization == On-chain registration.
-		console.log('Retrieving organization under address ' + address);
 		const orgRegistryContract = await this.requireWorkgroupContract(
 			"organization-registry"
 		);
@@ -1623,8 +1603,6 @@ export class ParticipantStack {
 	async inviteWorkgroupParticipant(email: string): Promise<string> {
 		const bobOrg = await this.resolveOrganizationAddress();
 
-		console.log('While creating invitation, this is bob\'s address: ' + bobOrg);
-
 		// Send invite
 		await Ident.clientFactory(
 			this.baselineConfig?.token,
@@ -1694,7 +1672,6 @@ export class ParticipantStack {
         interval = setInterval(async () => {
           this.fetchOrganization(address)
             .then((org) => {
-							console.log(`org[address] == ${address}? : ${org["address"].toLowerCase() === address.toLowerCase()}`);
               if (
                 org &&
                 org["address"].toLowerCase() === address.toLowerCase()
@@ -1761,8 +1738,6 @@ export class ParticipantStack {
   }
 
   async resolveWorkgroupContract(type: string): Promise<any> {
-    console.log("Stubbing " + type);
-
     if (
       this.ganacheContracts[type] &&
       this.ganacheContracts[type]["address"] !== "0x"
@@ -1847,7 +1822,7 @@ export class ParticipantStack {
       await this.createVaultKey(vault.id!, "secp256k1");
       this.hdwallet = await this.createVaultKey(vault.id!, "BIP39");
 
-      console.log("Org Address: " + (await this.fetchKeys())[2].address);
+      console.log(`Organization name : ${this.org.name}\n Organization address: ${(await this.fetchKeys())[2].address)}`);
 
       // Phase three -- Register organization in registry
       const resp = await this.g_registerOrganization(
@@ -1942,8 +1917,6 @@ export class ParticipantStack {
       JSON.stringify(address).match(new RegExp(/\b0x[a-zA-Z0-9]{40}\b/))![0] ||
       "0x";
 
-    console.log("orgAddress " + orgAddress);
-
     let regOrg = await registryConnector
       .registerOrg(
         orgAddress,
@@ -1979,7 +1952,7 @@ export class ParticipantStack {
       });
 
     console.log(
-      `Registered organization data: ${JSON.stringify(regOrg, undefined, 2)}`
+      `Just registered an organization under the following details \n: ${JSON.stringify(regOrg, undefined, 2)}`
     );
 
     return regOrg;
