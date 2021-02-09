@@ -1822,8 +1822,8 @@ export class ParticipantStack {
 			await this.createVaultKey(vault.id!, "secp256k1");
 			this.hdwallet = await this.createVaultKey(vault.id!, "BIP39");
 
-			console.log(`Organization name : ${this.org.name}\n Organization address: ${(await this.fetchKeys())[2].address)
-		} `);
+			console.log(`Organization name: ${this.org.name} \n 
+									Organization address: ${((await this.fetchKeys())[2].address)}`);
 
       // Phase three -- Register organization in registry
       const resp = await this.g_registerOrganization(
