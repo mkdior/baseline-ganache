@@ -876,7 +876,7 @@ export class ParticipantStack {
         network_id: this.baselineConfig?.networkId,
         params: {
           compiled_artifact:
-            contracts["erc1820-registry"].params?.compiled_artifact,
+            contracts["erc1820-registry"].params?.compiled_artifacts,
         },
         type: "erc1820-registry",
       },
@@ -886,7 +886,7 @@ export class ParticipantStack {
         network_id: this.baselineConfig?.networkId,
         params: {
           compiled_artifact:
-            contracts["organization-registry"].params?.compiled_artifact,
+            contracts["organization-registry"].params?.compiled_artifacts,
         },
         type: "organization-registry",
       },
@@ -895,7 +895,7 @@ export class ParticipantStack {
         name: "Shield",
         network_id: this.baselineConfig?.networkId,
         params: {
-          compiled_artifact: contracts["shield"].params?.compiled_artifact,
+          compiled_artifact: contracts["shield"].params?.compiled_artifacts,
         },
         type: "shield",
       },
@@ -904,7 +904,7 @@ export class ParticipantStack {
         name: "Verifier",
         network_id: this.baselineConfig?.networkId,
         params: {
-          compiled_artifact: contracts["verifier"].params?.compiled_artifact,
+          compiled_artifact: contracts["verifier"].params?.compiled_artifacts,
         },
         type: "verifier",
       },
@@ -933,9 +933,10 @@ export class ParticipantStack {
     const counterpartyAddr =
       invite.prvd.data.params.invitor_organization_address;
 
+		console.log(`2`);
     this.workgroupCounterparties.push(counterpartyAddr);
 
-		//TODO::(Hamza) -- Messes up here.. -- 1
+		console.log(`3`);
     const messagingEndpoint = await this.resolveMessagingEndpoint(
       counterpartyAddr
     );
@@ -1067,14 +1068,18 @@ export class ParticipantStack {
   }
 
   async resolveMessagingEndpoint(addr: string): Promise<string> {
-	 //TODO::(Hamza) -- Messes up here.. -- 2
+	 console.log('-- 1');
     const org = await this.fetchOrganization(addr);
+	 console.log('-- 2');
 
     if (!org) {
       return Promise.reject(`organization not resolved: ${addr}`);
     }
+	 console.log('-- 3');
 
     const messagingEndpoint = org["config"].messaging_endpoint;
+
+	 console.log('-- 4');
     if (!messagingEndpoint) {
       return Promise.reject(
         `organization messaging endpoint not resolved for recipient: ${addr}`
@@ -1267,6 +1272,7 @@ export class ParticipantStack {
 
 	async fetchOrganization(address: string): Promise<Organization> {
 		// fetchOrganization == On-chain registration.
+		console.log('Retrieving organization under address ' + address);
 		const orgRegistryContract = await this.requireWorkgroupContract(
 			"organization-registry"
 		);
@@ -1864,7 +1870,7 @@ export class ParticipantStack {
     const orgRegistryContract = await this.requireWorkgroupContract(
       "organization-registry"
     );
-    // Not filled with params when running from Alice's side.
+
     const registry_abi = orgRegistryContract.params.compiled_artifacts.abi;
     const url = "http://0.0.0.0:8545";
     const provider = new Eth.providers.JsonRpcProvider(url);
