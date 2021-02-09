@@ -206,8 +206,8 @@ describe("baseline", () => {
 
 				before(async () => {
 					this.ctx.app = aliceApp;
-					await bobApp.inviteWorkgroupParticipant(alice.email);
-					inviteToken = await scrapeInvitationToken("bob-ident-consumer"); // if configured, ident would have sent an email to Alice
+					inviteToken = await bobApp.inviteWorkgroupParticipant(alice.email);
+					//inviteToken = await scrapeInvitationToken("bob-ident-consumer"); // if configured, ident would have sent an email to Alice
 				});
 
 				it("should have created an invite for alice", async () => {
@@ -220,7 +220,7 @@ describe("baseline", () => {
 						await bobApp.requireWorkgroupContract("organization-registry");
 						await aliceApp.acceptWorkgroupInvite(
 							inviteToken,
-							bobApp.getWorkgroupContracts()
+							bobApp.getWorkgroupContractsGanache()
 						);
 					});
 
