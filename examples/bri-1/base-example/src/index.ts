@@ -280,9 +280,18 @@ export class ParticipantStack {
 		dv.config();
 
 		this.contracts = {};
+
 		// Same contracts structure but for the contracts deployed on Ganache.
+		// @TODO:: Remove this? Not sure if we even need this. Just overwrite
+		// this.contracts. 
 		this.ganacheContracts = {};
 		this.startProtocolSubscriptions();
+
+		// Add some commit-mgr hooks
+		const request = require("supertest");
+		this.commitMgrApiBob = request(process.env.B_MGR_API);
+		this.commitMgrApiAlice = request(process.env.A_MGR_API);
+
 
 		if (this.baselineConfig.initiator) {
 			// Clear up merkle-store if it exists
@@ -396,11 +405,6 @@ export class ParticipantStack {
 	}
 
 	private async ganacheAccountSetup() {
-		const request = require("supertest");
-
-		this.commitMgrApiBob = request(process.env.B_MGR_API);
-		this.commitMgrApiAlice = request(process.env.A_MGR_API);
-
 		const res = await this.commitMgrApiBob.post("/jsonrpc").send({
 			jsonrpc: "2.0",
 			method: "eth_accounts",
