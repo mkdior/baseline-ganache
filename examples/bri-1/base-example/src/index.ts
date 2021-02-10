@@ -940,9 +940,10 @@ export class ParticipantStack {
 		);
 
 
+		// Here Alice sets Bob's endpoint + bearer token to reach said endpoint.
+		console.log('Setting natsbearertoken ' + messagingEndpoint + ' ||||| ' + invite.prvd.data.params.authorized_bearer_token);
 		this.natsBearerTokens[messagingEndpoint] =
 			invite.prvd.data.params.authorized_bearer_token;
-
 
 		this.workflowIdentifier = invite.prvd.data.params.workflow_identifier;
 
