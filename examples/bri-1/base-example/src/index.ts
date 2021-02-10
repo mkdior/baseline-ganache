@@ -32,7 +32,6 @@ import {
 } from "@baseline-protocol/types";
 import {
 	Application as Workgroup,
-	Invite,
 	Vault as ProvideVault,
 	Organization,
 	Token,
@@ -41,7 +40,6 @@ import {
 import {
 	Capabilities,
 	Ident,
-	NChain,
 	Vault,
 	capabilitiesFactory,
 	nchainClientFactory,
@@ -53,21 +51,12 @@ import * as log from "loglevel";
 import {sha256} from "js-sha256";
 import {AuthService} from "ts-natsutil";
 import {ethers as Eth} from "ethers";
-import {
-	web3provider,
-	wallet,
-	txManager,
-	waitRelayTx,
-	deposit,
-	getBalance,
-} from "../test/utils-comm.js";
 
 import uuid4 from "uuid4";
 import * as dv from "dotenv";
 import mongoose from "mongoose";
 
 // Testing
-import {resolve} from "dns";
 import {IdentWrapper} from "../../../bri-2/commit-mgr/src/db/controllers/Ident";
 import {NonceManager} from "@ethersproject/experimental";
 import {
@@ -88,126 +77,6 @@ const zokratesImportResolver = (location, path) => {
 		location: path,
 	};
 };
-
-//#region
-/*
-	fetchAccounts(params) {
-					 return clients_1.ApiClient.handleResponse(yield this.client.get('accounts', (params || {})));
-		fetchAccountDetails(accountId) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`accounts/${accountId}`, {}));
-		fetchAccountBalance(accountId, tokenId) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`accounts/${accountId}/balances/${tokenId}`, {}));
-		createAccount(params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.post('accounts', params));
-		fetchBridges(params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get('bridges', (params || {})));
-		fetchBridgeDetails(bridgeId) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`bridges/${bridgeId}`, {}));
-		createBridge(params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.post('bridges', params));
-		fetchConnectors(params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get('connectors', (params || {})));
-		fetchConnectorDetails(connectorId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`connectors/${connectorId}`, (params || {})));
-		fetchConnectorLoadBalancers(connectorId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`connectors/${connectorId}/load_balancers`, (params || {})));
-		fetchConnectorNodes(connectorId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`connectors/${connectorId}/nodes`, (params || {})));
-		createConnector(params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.post('connectors', params));
-		deleteConnector(connectorId) {
-						return clients_1.ApiClient.handleResponse(yield this.client.delete(`connectors/${connectorId}`));
-		authorizeConnectorSubscription(connectorId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.post(`connectors/${connectorId}/subscriptions`, params));
-		authorizeContractSubscription(contractId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.post(`contracts/${contractId}/subscriptions`, params));
-		createConnectedEntity(connectorId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.post(`connectors/${connectorId}/entities`, params));
-		fetchConnectedEntities(connectorId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`connectors/${connectorId}/entities`, params));
-		fetchConnectedEntityDetails(connectorId, entityId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`connectors/${connectorId}/entities/${entityId}`, (params || {})));
-		updateConnectedEntity(connectorId, entityId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.put(`connectors/${connectorId}/entities/${entityId}`, params));
-		deleteConnectedEntity(connectorId, entityId) {
-						return clients_1.ApiClient.handleResponse(yield this.client.delete(`connectors/${connectorId}/entities/${entityId}`));
-		fetchContracts(params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get('contracts', (params || {})));
-		fetchContractDetails(contractId) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`contracts/${contractId}`, {}));
-		createContract(params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.post('contracts', params));
-		executeContract(contractId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.post(`contracts/${contractId}/execute`, params));
-		fetchNetworks(params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get('networks', (params || {})));
-		createNetwork(params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.post('networks', params));
-		updateNetwork(networkId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.put(`networks/${networkId}`, params));
-		fetchNetworkDetails(networkId) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`networks/${networkId}`, {}));
-		fetchNetworkAccounts(networkId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`networks/${networkId}/accounts`, params));
-		fetchNetworkBlocks(networkId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`networks/${networkId}/blocks`, params));
-		fetchNetworkBridges(networkId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`networks/${networkId}/bridges`, params));
-		fetchNetworkConnectors(networkId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`networks/${networkId}/connectors`, params));
-		fetchNetworkContracts(networkId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`networks/${networkId}/contracts`, params));
-		fetchNetworkContractDetails(networkId, contractId) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`networks/${networkId}/contracts/${contractId}`, {}));
-		fetchNetworkOracles(networkId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`networks/${networkId}/oracles`, params));
-		fetchNetworkTokenContracts(networkId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`networks/${networkId}/tokens`, params));
-		fetchNetworkTransactions(networkId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`networks/${networkId}/transactions`, params));
-		fetchNetworkTransactionDetails(networkId, transactionId) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`networks/${networkId}/transactions/${transactionId}`, {}));
-		fetchNetworkStatus(networkId) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`networks/${networkId}/status`, {}));
-		fetchNetworkNodes(networkId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`networks/${networkId}/nodes`, (params || {})));
-		createNetworkNode(networkId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.post(`networks/${networkId}/nodes`, params));
-		fetchNetworkNodeDetails(networkId, nodeId) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`networks/${networkId}/nodes/${nodeId}`, {}));
-		fetchNetworkNodeLogs(networkId, nodeId, params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`networks/${networkId}/nodes/${nodeId}/logs`, (params || {})));
-		deleteNetworkNode(networkId, nodeId) {
-						return clients_1.ApiClient.handleResponse(yield this.client.delete(`networks/${networkId}/nodes/${nodeId}`));
-		fetchOracles(params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get('oracles', (params || {})));
-		fetchOracleDetails(oracleId) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`oracles/${oracleId}`, {}));
-		createOracle(params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.post('oracles', params));
-		fetchTokenContracts(params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get('tokens', (params || {})));
-		fetchTokenContractDetails(tokenId) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`tokens/${tokenId}`, {}));
-		createTokenContract(params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.post('tokens', params));
-		createTransaction(params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.post('transactions', params));
-		fetchTransactions(params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get('transactions', (params || {})));
-		fetchTransactionDetails(transactionId) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`transactions/${transactionId}`, {}));
-		fetchWallets(params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get('wallets', (params || {})));
-		fetchWalletAccounts(walletId) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`wallets/${walletId}/accounts`, {}));
-		fetchWalletDetails(walletId) {
-						return clients_1.ApiClient.handleResponse(yield this.client.get(`wallets/${walletId}`, {}));
-		createWallet(params) {
-						return clients_1.ApiClient.handleResponse(yield this.client.post('wallets', params));
-
-						*/
-//#endregion
 
 export class ParticipantStack {
 	private baseline?: IBaselineRPC & IBlockchainService & IRegistry & IVault;
@@ -307,10 +176,6 @@ export class ParticipantStack {
 					this.baselineConfig.workgroupToken
 				);
 			} else if (this.baselineConfig.workgroupName) {
-				console.log(
-					"No workgroup found so let's create one " +
-					this.baselineConfig.workgroupName
-				);
 				await this.createWorkgroup(this.baselineConfig.workgroupName);
 			}
 
@@ -453,7 +318,7 @@ export class ParticipantStack {
 		await this.collectionDropper(["organization", "user", "workgroup"], (await this.identConnector()).connection);
 	}
 
-	// TODO::(Hamza) -- Scan for and delete Ident collections.
+	// @TODO::(Hamza) -- Scan for and delete Ident collections.
 	private async collectionDropper(
 		names: string[],
 		con: mongoose.Connection
@@ -463,7 +328,7 @@ export class ParticipantStack {
 				if (collections && collections.length > 0) {
 					for (var collection of collections) {
 						if (collection.name === name) {
-							console.log(`Found an old ${name} collection; delete.`);
+							//console.log(`Found an old ${name} collection; delete.`);
 							await con.db.dropCollection(name);
 						}
 					}
@@ -717,9 +582,9 @@ export class ParticipantStack {
 			},
 		};
 
-		for (const [key, value] of Object.entries(this.ganacheContracts)) {
-			console.log(`${key} address: ${(value as any)!.address}`);
-		}
+		//for (const [key, value] of Object.entries(this.ganacheContracts)) {
+		//	console.log(`${key} address: ${(value as any)!.address}`);
+		//}
 	}
 
 	private async dispatchProtocolMessage(msg: ProtocolMessage): Promise<any> {
@@ -910,26 +775,6 @@ export class ParticipantStack {
 			},
 		};
 
-		//const nchain = nchainClientFactory(
-		//  this.workgroupToken,
-		//  this.baselineConfig?.nchainApiScheme,
-		//  this.baselineConfig?.nchainApiHost
-		//);
-
-		//this.contracts["erc1820-registry"] = await nchain.createContract(
-		//  this.contracts["erc1820-registry"]
-		//);
-		//this.contracts["organization-registry"] = await nchain.createContract(
-		//  this.contracts["organization-registry"]
-		//);
-
-		//this.contracts["shield"] = await nchain.createContract(
-		//  this.contracts["shield"]
-		//);
-		//this.contracts["verifier"] = await nchain.createContract(
-		//  this.contracts["verifier"]
-		//);
-
 		const counterpartyAddr =
 			invite.prvd.data.params.invitor_organization_address;
 
@@ -940,8 +785,6 @@ export class ParticipantStack {
 		);
 
 
-		// Here Alice sets Bob's endpoint + bearer token to reach said endpoint.
-		console.log('Setting natsbearertoken ' + messagingEndpoint + ' ||||| ' + invite.prvd.data.params.authorized_bearer_token);
 		this.natsBearerTokens[messagingEndpoint] =
 			invite.prvd.data.params.authorized_bearer_token;
 
@@ -949,10 +792,8 @@ export class ParticipantStack {
 
 		await this.baseline
 			?.track(invite.prvd.data.params.shield_contract_address)
-			.catch((err) => {});
+			.catch((err) => console.log(JSON.stringify(err, undefined, 2)));
 
-
-		console.log(` Registering Alice under name: ${this.baselineConfig.orgName}`);
 
 		// Register organization on-chain.
 		await this.registerOrganization(
@@ -1262,28 +1103,6 @@ export class ParticipantStack {
 			"organization-registry"
 		);
 
-		//const nchain = nchainClientFactory(
-		//  this.workgroupToken,
-		//  this.baselineConfig?.nchainApiScheme,
-		//  this.baselineConfig?.nchainApiHost
-		//);
-		// https://docs.provide.services/api/nchain/signing/accounts#create-account
-		// Signer
-		//const signerResp = await nchain.createAccount({
-		//  network_id: this.baselineConfig?.networkId,
-		//});
-
-		//const resp = await NChain.clientFactory(
-		//  this.workgroupToken,
-		//  this.baselineConfig?.nchainApiScheme,
-		//  this.baselineConfig?.nchainApiHost
-		//).executeContract(orgRegistryContract.id, {
-		//  method: "getOrg",
-		//  params: [address],
-		//  value: 0,
-		//  account_id: signerResp["id"],
-		//});
-
 		const resp = await this.g_retrieveOrganization(address).then((org) => org).catch((err) =>
 			console.log(
 				`Error while fetching organization under : ${address}. Error details: \n ${JSON.stringify(
@@ -1461,12 +1280,6 @@ export class ParticipantStack {
 		console.log("Tracking shield through Commit-Mgr");
 		console.log("Shield Address we're going to track: " + shieldAddress);
 
-		//		Doesn't work for some reason, fix this later, for now manually call.
-		//
-		//		const trackedShield = await this.baseline?.track(shieldAddress).then((v) => {
-		//			console.log(`baseline.track: ${JSON.stringify(v, undefined, 2)}`);
-		//			return v;
-		//		}).catch((e) => console.log(`Shield TRACKING error: ${e}`));
 
 		const trackedShield = await this.commitMgrApiBob
 			.post("/jsonrpc")
@@ -1827,9 +1640,6 @@ export class ParticipantStack {
 			await this.createVaultKey(vault.id!, "secp256k1");
 			this.hdwallet = await this.createVaultKey(vault.id!, "BIP39");
 
-			console.log(`Organization name: ${this.org.name} \n 
-									Organization address: ${((await this.fetchKeys())[2].address)}`);
-
       // Phase three -- Register organization in registry
       const resp = await this.g_registerOrganization(
         this.org.name,
@@ -1956,10 +1766,6 @@ export class ParticipantStack {
       .catch((e: any) => {
         throw Error("Error while trying to create organization." + e);
       });
-
-    console.log(
-      `Just registered an organization under the following details \n: ${JSON.stringify(regOrg, undefined, 2)} `
-    );
 
     return regOrg;
   }
