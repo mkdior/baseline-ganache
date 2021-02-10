@@ -1124,7 +1124,7 @@ export class ParticipantStack {
 			await this.protocolMessageFactory(
 				opcode,
 				recipient,
-				this.contracts["shield"].address,
+				this.ganacheContracts["shield"].address,
 				this.workflowIdentifier!,
 				Buffer.from(JSON.stringify(msg))
 			)
