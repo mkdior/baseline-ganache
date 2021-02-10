@@ -624,6 +624,7 @@ export class ParticipantStack {
 					if (payload.sibling_path && payload.sibling_path.length > 0) {
 						// perform off-chain verification to make sure this is a legal state transition
 						const root = payload.sibling_path[0];
+						// @TODO:: Replace this with commit-mgr <++> <++>
 						const verified = this.baseline?.verify(
 							this.contracts["shield"].address,
 							payload.leaf,
@@ -664,6 +665,7 @@ export class ParticipantStack {
 					const publicInputs = []; // FIXME
 					const value = ""; // FIXME
 
+					// @TODO:: Replace this with commit-mgr <++> <++>
 					const resp = await this.baseline?.verifyAndPush(
 						msg.sender,
 						this.contracts["shield"].address,
@@ -676,6 +678,7 @@ export class ParticipantStack {
 
 					if (leaf) {
 						console.log(`inserted leaf... ${leaf}`);
+						// @TODO:: Replace this with commit-mgr <++> <++>
 						payload.sibling_path = (
 							await this.baseline!.getProof(msg.shield, leaf.location())
 						).map((node) => node.location());
@@ -790,9 +793,41 @@ export class ParticipantStack {
 
 		this.workflowIdentifier = invite.prvd.data.params.workflow_identifier;
 
-		await this.baseline
-			?.track(invite.prvd.data.params.shield_contract_address)
-			.catch((err) => console.log(JSON.stringify(err, undefined, 2)));
+		// @TODO:: Write a wrapper around these functions for DRY
+		// @NEXT:: Continue here.. 
+		const trackedShield = await this.commitMgrApiAlice
+			.post("/jsonrpc")
+			.send({
+				jsonrpc: "2.0",
+				method: "baseline_track",
+				params: [invite.prvd.data.params.shield_contract_address],
+				id: 1,
+			})
+			.then((res) => {
+				// @TODO:: Return the error here instead of false... 
+				if (res.status !== 200) return false;
+				const parsedResponse: any = () => {
+					try {
+						return JSON.parse(res.text);
+					} catch (error) {
+						console.log(
+							`ERROR while parsing baseline_track response text ${JSON.stringify(
+								error,
+								undefined,
+								2
+							)}`
+						);
+						return undefined;
+					}
+				};
+				return parsedResponse().result;
+			}).catch((e) => console.log(JSON.stringify(e, undefined, 2)));
+
+		if (!trackedShield) {
+			console.log("WARNING: failed to track baseline shield contract");
+		} else {
+			console.log(`${this.baselineConfig.name} tracking shield under the address: ${invite.prvd.data.params.shield_contract_address}`);
+		}
 
 
 		// Register organization on-chain.
@@ -1276,11 +1311,6 @@ export class ParticipantStack {
 		// TODO::(Hamza) -- Replace this shield contract
 		const shieldAddress = this.ganacheContracts["shield"]["address"];
 
-		// Commit-mgr handles the tracking
-		console.log("Tracking shield through Commit-Mgr");
-		console.log("Shield Address we're going to track: " + shieldAddress);
-
-
 		const trackedShield = await this.commitMgrApiBob
 			.post("/jsonrpc")
 			.send({
@@ -1289,11 +1319,11 @@ export class ParticipantStack {
 				params: [shieldAddress],
 				id: 1,
 			})
-			.then((v) => {
-				if (v.status !== 200) return false;
+			.then((res) => {
+				if (res.status !== 200) return false;
 				const parsedResponse: any = () => {
 					try {
-						return JSON.parse(v.text);
+						return JSON.parse(res.text);
 					} catch (error) {
 						console.log(
 							`ERROR while parsing baseline_track response text ${JSON.stringify(
@@ -1310,6 +1340,8 @@ export class ParticipantStack {
 
 		if (!trackedShield) {
 			console.log("WARNING: failed to track baseline shield contract");
+		} else {
+			console.log(`${this.org?.name} tracking shield under the address: ${shieldAddress}`);
 		}
 
 		this.baselineCircuitSetupArtifacts = setupArtifacts;
@@ -1329,11 +1361,11 @@ export class ParticipantStack {
 				params: [],
 				id: 1,
 			})
-			.then((v) => {
-				if (v.status !== 200) return false;
+			.then((res) => {
+				if (res.status !== 200) return false;
 				const parsedResponse: any = () => {
 					try {
-						return JSON.parse(v.text);
+						return JSON.parse(res.text);
 					} catch (error) {
 						console.log(
 							`ERROR while parsing baseline_getTracked response text ${JSON.stringify(
@@ -1744,12 +1776,12 @@ export class ParticipantStack {
         Eth.utils.toUtf8Bytes(zkpPublicKey),
         Eth.utils.toUtf8Bytes("{}")
       )
-      .then((v) => {
+      .then((res) => {
         // Decode our transaction data.
         const tempOrg = Eth.utils.defaultAbiCoder.decode(
           ["address", "bytes32", "bytes", "bytes", "bytes", "bytes"],
           // Remove first 4 bytes ( the function sighash )
-          Eth.utils.hexDataSlice(v.data, 4)
+          Eth.utils.hexDataSlice(res.data, 4)
         );
 
         // Parse the organization values and return it to base variable.
