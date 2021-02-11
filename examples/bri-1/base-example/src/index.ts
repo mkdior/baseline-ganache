@@ -397,8 +397,7 @@ export class ParticipantStack {
     const abiCoder = new Eth.utils.AbiCoder();
     const sender = (await provider.listAccounts())[2];
 
-    let erc1820Address: string,
-      orgRegistryAddress: string;
+    let erc1820Address: string, orgRegistryAddress: string;
 
     // Begin ERC-1820 contract
     const unsigned1820Tx: any = {
@@ -483,7 +482,7 @@ export class ParticipantStack {
           compiled_artifacts: orgRegistryContract,
         },
         type: "organization-registry",
-      }
+      },
     };
 
     //for (const [key, value] of Object.entries(this.ganacheContracts)) {
@@ -528,15 +527,14 @@ export class ParticipantStack {
           if (payload.sibling_path && payload.sibling_path.length > 0) {
             // perform off-chain verification to make sure this is a legal state transition
             const root = payload.sibling_path[0];
-						const verified = this.requestMgr(
-							Mgr.Bob, 
-							"baseline_verify", 
-							[
-								this.ganacheContracts["shield"].address, 
-								payload.leaf, 
-								root, 
-								payload.sibling_path
-							]).then((res: any) => res).catch(() => undefined);
+            const verified = this.requestMgr(Mgr.Bob, "baseline_verify", [
+              this.ganacheContracts["shield"].address,
+              payload.leaf,
+              root,
+              payload.sibling_path,
+            ])
+              .then((res: any) => res)
+              .catch(() => undefined);
 
             if (!verified) {
               console.log(
@@ -572,22 +570,21 @@ export class ParticipantStack {
           const publicInputs = []; // FIXME
           const value = ""; // FIXME
 
-						const resp = this.requestMgr(
-							Mgr.Bob, 
-							"baseline_verify", 
-							[
-								msg.sender, 	 
-            		this.contracts["shield"].address,
-								payload.result.proof.proof,
-								publicInputs,
-								value
-							]).then((res: any) => res).catch(() => undefined);
+          const resp = this.requestMgr(Mgr.Bob, "baseline_verify", [
+            msg.sender,
+            this.contracts["shield"].address,
+            payload.result.proof.proof,
+            publicInputs,
+            value,
+          ])
+            .then((res: any) => res)
+            .catch(() => undefined);
 
-					console.log("TODOTODOTODOTODO");
-					console.log(JSON.stringify(resp, undefined, 2));
-          const leaf = new MerkleTreeNode("undefined", 240);//resp!.commitment as MerkleTreeNode;
-					console.log("TODOTODOTODOTODO");
-					return;
+          console.log("TODOTODOTODOTODO");
+          console.log(JSON.stringify(resp, undefined, 2));
+          const leaf = new MerkleTreeNode("undefined", 240); //resp!.commitment as MerkleTreeNode;
+          console.log("TODOTODOTODOTODO");
+          return;
 
           if (leaf) {
             console.log(`inserted leaf... ${leaf}`);
@@ -824,14 +821,16 @@ export class ParticipantStack {
         throw new Error("invalid proof type");
     }
 
-		console.log(`Finished all cases`);
+    console.log(`Finished all cases`);
 
-		// @TODO::Hamza Plug the right circuit.
-		// Comment out the rest of the args, no-op expects a single public parameter.
+    // @TODO::Hamza Plug the right circuit.
+    // Comment out the rest of the args, no-op expects a single public parameter.
     const args = [
       this.marshalCircuitArg(commitment), // should == what we are computing in the circuit
-		];
-		console.log(`Finished building argument list: ${JSON.stringify(args, undefined, 2)}`);
+    ];
+    console.log(
+      `Finished building argument list: ${JSON.stringify(args, undefined, 2)}`
+    );
     //  {
     //    value: [
     //      this.marshalCircuitArg(commitment.substring(0, 16)),
@@ -852,26 +851,49 @@ export class ParticipantStack {
     //  },
     //];
 
-		console.log("Current organization: " + this.org!.name);
-		//@TODO:: Check why we're in here as Alice from the get-go.
-		//@F001
-		if (this.baselineCircuitArtifacts?.program) {
-			this.compileBaselineCircuit();
-		}
-		
-		console.log(`Proof generation starting now.`);
-		console.log("Program: " + JSON.stringify({
-			program: this.baselineCircuitArtifacts?.program,
-		}, undefined, 2));
+    console.log("Current organization: " + this.org!.name);
+    //@TODO:: Check why we're in here as Alice from the get-go.
+    //@F001
+    if (this.baselineCircuitArtifacts?.program) {
+      this.compileBaselineCircuit();
+    }
 
-		console.log("Witness: " + JSON.stringify({
-			witness: (await this.zk?.computeWitness(this.baselineCircuitArtifacts!, args))!
-        .witness,
-		}, undefined, 2));
+    console.log(`Proof generation starting now.`);
+    console.log(
+      "Program: " +
+        JSON.stringify(
+          {
+            program: this.baselineCircuitArtifacts?.program,
+          },
+          undefined,
+          2
+        )
+    );
 
-		console.log("Keypair: " + JSON.stringify({
-			keypair: this.baselineCircuitSetupArtifacts?.keypair?.pk
-		}, undefined, 2));
+    console.log(
+      "Witness: " +
+        JSON.stringify(
+          {
+            witness: (await this.zk?.computeWitness(
+              this.baselineCircuitArtifacts!,
+              args
+            ))!.witness,
+          },
+          undefined,
+          2
+        )
+    );
+
+    console.log(
+      "Keypair: " +
+        JSON.stringify(
+          {
+            keypair: this.baselineCircuitSetupArtifacts?.keypair?.pk,
+          },
+          undefined,
+          2
+        )
+    );
 
     const proof = await this.zk?.generateProof(
       this.baselineCircuitArtifacts?.program,
@@ -1259,9 +1281,13 @@ export class ParticipantStack {
       throw new Error("verifier contract compilation failed");
     }
 
-		//@TODO Clean this abomination up
+    //@TODO Clean this abomination up
 
-    const contractByte = "0x" + compilerOutput.contracts["verifier.sol"]["Verifier"]["evm"]["bytecode"]["object"];
+    const contractByte =
+      "0x" +
+      compilerOutput.contracts["verifier.sol"]["Verifier"]["evm"]["bytecode"][
+        "object"
+      ];
     const shieldContract = JSON.parse(
       readFileSync("../../bri-2/contracts/artifacts/Shield.json").toString()
     ); // #2
@@ -1279,7 +1305,9 @@ export class ParticipantStack {
       nonce: await managedSigner.getTransactionCount(),
     };
 
-    let gasEstimate = await managedSigner.estimateGas(unsignedVerifierTx).catch((e) => console.log(JSON.stringify(e, undefined, 2)));
+    let gasEstimate = await managedSigner
+      .estimateGas(unsignedVerifierTx)
+      .catch((e) => console.log(JSON.stringify(e, undefined, 2)));
     unsignedVerifierTx.gasLimit = Math.ceil(Number(gasEstimate) * 1.1);
 
     let verifierTxHash = await managedSigner
@@ -1354,29 +1382,30 @@ export class ParticipantStack {
 
     const shieldReceiptDetails = shieldReceipt.body.result;
 
-		this.ganacheContracts = {
-			...this.ganacheContracts,
-			...{
-				shield: {
-					address: shieldReceiptDetails.contractAddress,
-					name: "Shield",
-					network_id: 0,
-					params: {
-						compiled_artifacts: shieldContract,
-					},
-					type: "shield",
-				},
-				verifier: {
-					address: verifierReceiptDetails.contractAddress,
-					name: "Verifier",
-					network_id: 0,
-					params: {
-						compiled_artifacts: compilerOutput.contracts["verifier.sol"]["Verifier"]["evm"],
-					},
-					type: "verifier",
-				}
-			}
-	};
+    this.ganacheContracts = {
+      ...this.ganacheContracts,
+      ...{
+        shield: {
+          address: shieldReceiptDetails.contractAddress,
+          name: "Shield",
+          network_id: 0,
+          params: {
+            compiled_artifacts: shieldContract,
+          },
+          type: "shield",
+        },
+        verifier: {
+          address: verifierReceiptDetails.contractAddress,
+          name: "Verifier",
+          network_id: 0,
+          params: {
+            compiled_artifacts:
+              compilerOutput.contracts["verifier.sol"]["Verifier"]["evm"],
+          },
+          type: "verifier",
+        },
+      },
+    };
 
     this.baselineCircuitSetupArtifacts = setupArtifacts;
     this.workflowIdentifier = this.baselineCircuitSetupArtifacts?.identifier;
