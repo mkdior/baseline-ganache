@@ -379,14 +379,6 @@ export class ParticipantStack {
   }
 
   private async contractSetup(): Promise<any> {
-    const verifierContract = JSON.parse(
-      readFileSync(
-        "../../bri-2/contracts/artifacts/VerifierNoop.json"
-      ).toString()
-    ); // #1
-    const shieldContract = JSON.parse(
-      readFileSync("../../bri-2/contracts/artifacts/Shield.json").toString()
-    ); // #2
     const erc1820Contract = JSON.parse(
       readFileSync(
         "../../bri-2/contracts/artifacts/ERC1820Registry.json"
@@ -403,80 +395,10 @@ export class ParticipantStack {
     const signer = provider.getSigner((await provider.listAccounts())[2]);
     const managedSigner = new NonceManager(signer);
     const abiCoder = new Eth.utils.AbiCoder();
-    const treeHeight = 2;
     const sender = (await provider.listAccounts())[2];
 
-    let verifierAddress,
-      shieldAddress,
-      erc1820Address,
+    let erc1820Address: string,
       orgRegistryAddress: string;
-
-    // Begin Verifier Contract
-    const unsignedVerifierTx: any = {
-      from: sender,
-      data: verifierContract.bytecode,
-      nonce: managedSigner.getTransactionCount(),
-    };
-
-    let gasEstimate = await managedSigner.estimateGas(unsignedVerifierTx);
-    unsignedVerifierTx.gasLimit = Math.ceil(Number(gasEstimate) * 1.1);
-
-    let verifierTxHash = await managedSigner
-      .sendTransaction(unsignedVerifierTx)
-      .then((tx) => {
-        return tx.hash;
-      })
-      .catch((err) =>
-        console.log(`(Error 1): ${JSON.stringify(err, undefined, 2)}`)
-      );
-
-    // TODO:: Test out each transaction@
-
-    const verifierReceipt = await this.commitMgrApiBob.post("/jsonrpc").send({
-      jsonrpc: "2.0",
-      method: "eth_getTransactionReceipt",
-      params: [verifierTxHash],
-      id: 1,
-    });
-
-    const verifierReceiptDetails = verifierReceipt.body.result;
-    verifierAddress = verifierReceiptDetails.contractAddress;
-
-    // Begin Shield Contract
-    const encodedShieldParams = abiCoder.encode(
-      ["address", "uint"],
-      [verifierAddress, treeHeight]
-    );
-    const shieldBytecodeWithParams =
-      shieldContract.bytecode + encodedShieldParams.slice(2).toString();
-
-    const unsignedShieldTx: any = {
-      from: sender,
-      data: shieldBytecodeWithParams,
-      nonce: await managedSigner.getTransactionCount(),
-    };
-
-    gasEstimate = await managedSigner.estimateGas(unsignedShieldTx);
-    unsignedShieldTx.gasLimit = Math.ceil(Number(gasEstimate) * 1.1);
-
-    let shieldTxHash = await managedSigner
-      .sendTransaction(unsignedShieldTx)
-      .then((tx) => {
-        return tx.hash;
-      })
-      .catch((error) =>
-        console.log(`error(1): ${JSON.stringify(error, undefined, 2)}`)
-      );
-
-    const shieldReceipt = await this.commitMgrApiBob.post("/jsonrpc").send({
-      jsonrpc: "2.0",
-      method: "eth_getTransactionReceipt",
-      params: [shieldTxHash],
-      id: 1,
-    });
-
-    const shieldReceiptDetails = shieldReceipt.body.result;
-    shieldAddress = shieldReceiptDetails.contractAddress;
 
     // Begin ERC-1820 contract
     const unsigned1820Tx: any = {
@@ -485,7 +407,7 @@ export class ParticipantStack {
       nonce: await managedSigner.getTransactionCount(),
     };
 
-    gasEstimate = await managedSigner.estimateGas(unsigned1820Tx);
+    let gasEstimate = await managedSigner.estimateGas(unsigned1820Tx);
     unsigned1820Tx.gasLimit = Math.ceil(Number(gasEstimate) * 1.1);
 
     let erc1820TxHash = await managedSigner
@@ -561,25 +483,7 @@ export class ParticipantStack {
           compiled_artifacts: orgRegistryContract,
         },
         type: "organization-registry",
-      },
-      shield: {
-        address: shieldAddress,
-        name: "Shield",
-        network_id: 0,
-        params: {
-          compiled_artifacts: shieldContract,
-        },
-        type: "shield",
-      },
-      verifier: {
-        address: verifierAddress,
-        name: "Verifier",
-        network_id: 0,
-        params: {
-          compiled_artifacts: verifierContract,
-        },
-        type: "verifier",
-      },
+      }
     };
 
     //for (const [key, value] of Object.entries(this.ganacheContracts)) {
@@ -624,13 +528,16 @@ export class ParticipantStack {
           if (payload.sibling_path && payload.sibling_path.length > 0) {
             // perform off-chain verification to make sure this is a legal state transition
             const root = payload.sibling_path[0];
-            // @TODO:: Replace this with commit-mgr <++> <++>
-            const verified = this.baseline?.verify(
-              this.contracts["shield"].address,
-              payload.leaf,
-              root,
-              payload.sibling_path
-            );
+						const verified = this.requestMgr(
+							Mgr.Bob, 
+							"baseline_verify", 
+							[
+								this.ganacheContracts["shield"].address, 
+								payload.leaf, 
+								root, 
+								payload.sibling_path
+							]).then((res: any) => res).catch(() => undefined);
+
             if (!verified) {
               console.log(
                 "WARNING-- off-chain verification of proposed state transition failed..."
@@ -665,16 +572,22 @@ export class ParticipantStack {
           const publicInputs = []; // FIXME
           const value = ""; // FIXME
 
-          // @TODO:: Replace this with commit-mgr <++> <++>
-          const resp = await this.baseline?.verifyAndPush(
-            msg.sender,
-            this.contracts["shield"].address,
-            payload.result.proof.proof,
-            publicInputs,
-            value
-          );
+						const resp = this.requestMgr(
+							Mgr.Bob, 
+							"baseline_verify", 
+							[
+								msg.sender, 	 
+            		this.contracts["shield"].address,
+								payload.result.proof.proof,
+								publicInputs,
+								value
+							]).then((res: any) => res).catch(() => undefined);
 
-          const leaf = resp!.commitment as MerkleTreeNode;
+					console.log("TODOTODOTODOTODO");
+					console.log(JSON.stringify(resp, undefined, 2));
+          const leaf = new MerkleTreeNode("undefined", 240);//resp!.commitment as MerkleTreeNode;
+					console.log("TODOTODOTODOTODO");
+					return;
 
           if (leaf) {
             console.log(`inserted leaf... ${leaf}`);
@@ -911,27 +824,54 @@ export class ParticipantStack {
         throw new Error("invalid proof type");
     }
 
+		console.log(`Finished all cases`);
+
+		// @TODO::Hamza Plug the right circuit.
+		// Comment out the rest of the args, no-op expects a single public parameter.
     const args = [
       this.marshalCircuitArg(commitment), // should == what we are computing in the circuit
-      {
-        value: [
-          this.marshalCircuitArg(commitment.substring(0, 16)),
-          this.marshalCircuitArg(commitment.substring(16)),
-        ],
-        salt: [
-          this.marshalCircuitArg(salt.substring(0, 16)),
-          this.marshalCircuitArg(salt.substring(16)),
-        ],
-      },
-      {
-        senderPublicKey: [
-          this.marshalCircuitArg(senderZkPublicKey.substring(0, 16)),
-          this.marshalCircuitArg(senderZkPublicKey.substring(16)),
-        ],
-        agreementName: this.marshalCircuitArg(msg.doc.name),
-        agreementUrl: this.marshalCircuitArg(msg.doc.url),
-      },
-    ];
+		];
+		console.log(`Finished building argument list: ${JSON.stringify(args, undefined, 2)}`);
+    //  {
+    //    value: [
+    //      this.marshalCircuitArg(commitment.substring(0, 16)),
+    //      this.marshalCircuitArg(commitment.substring(16)),
+    //    ],
+    //    salt: [
+    //      this.marshalCircuitArg(salt.substring(0, 16)),
+    //      this.marshalCircuitArg(salt.substring(16)),
+    //    ],
+    //  },
+    //  {
+    //    senderPublicKey: [
+    //      this.marshalCircuitArg(senderZkPublicKey.substring(0, 16)),
+    //      this.marshalCircuitArg(senderZkPublicKey.substring(16)),
+    //    ],
+    //    agreementName: this.marshalCircuitArg(msg.doc.name),
+    //    agreementUrl: this.marshalCircuitArg(msg.doc.url),
+    //  },
+    //];
+
+		console.log("Current organization: " + this.org!.name);
+		//@TODO:: Check why we're in here as Alice from the get-go.
+		//@F001
+		if (this.baselineCircuitArtifacts?.program) {
+			this.compileBaselineCircuit();
+		}
+		
+		console.log(`Proof generation starting now.`);
+		console.log("Program: " + JSON.stringify({
+			program: this.baselineCircuitArtifacts?.program,
+		}, undefined, 2));
+
+		console.log("Witness: " + JSON.stringify({
+			witness: (await this.zk?.computeWitness(this.baselineCircuitArtifacts!, args))!
+        .witness,
+		}, undefined, 2));
+
+		console.log("Keypair: " + JSON.stringify({
+			keypair: this.baselineCircuitSetupArtifacts?.keypair?.pk
+		}, undefined, 2));
 
     const proof = await this.zk?.generateProof(
       this.baselineCircuitArtifacts?.program,
@@ -1289,6 +1229,7 @@ export class ParticipantStack {
 
     // perform trusted setup and deploy verifier/shield contract
     const setupArtifacts = await this.zk?.setup(this.baselineCircuitArtifacts);
+
     const compilerOutput = JSON.parse(
       solidityCompile(
         JSON.stringify({
@@ -1318,13 +1259,49 @@ export class ParticipantStack {
       throw new Error("verifier contract compilation failed");
     }
 
-    const contractParams = compilerOutput.contracts["verifier.sol"]["Verifier"];
+		//@TODO Clean this abomination up
 
-    //await this.deployWorkgroupContract('Verifier', 'verifier', contractParams);
+    const contractByte = "0x" + compilerOutput.contracts["verifier.sol"]["Verifier"]["evm"]["bytecode"]["object"];
+    const shieldContract = JSON.parse(
+      readFileSync("../../bri-2/contracts/artifacts/Shield.json").toString()
+    ); // #2
+
+    // Begin Verifier Contract
+    const url = "http://0.0.0.0:8545";
+    const provider = new Eth.providers.JsonRpcProvider(url);
+    const abiCoder = new Eth.utils.AbiCoder();
+    const signer = provider.getSigner((await provider.listAccounts())[2]);
+    const managedSigner = new NonceManager(signer);
+    const sender = (await provider.listAccounts())[2];
+    const unsignedVerifierTx: any = {
+      from: sender,
+      data: contractByte,
+      nonce: await managedSigner.getTransactionCount(),
+    };
+
+    let gasEstimate = await managedSigner.estimateGas(unsignedVerifierTx).catch((e) => console.log(JSON.stringify(e, undefined, 2)));
+    unsignedVerifierTx.gasLimit = Math.ceil(Number(gasEstimate) * 1.1);
+
+    let verifierTxHash = await managedSigner
+      .sendTransaction(unsignedVerifierTx)
+      .then((tx) => {
+        return tx.hash;
+      })
+      .catch((err) =>
+        console.log(`(Error 1): ${JSON.stringify(err, undefined, 2)}`)
+      );
+
+    const verifierReceipt = await this.commitMgrApiBob.post("/jsonrpc").send({
+      jsonrpc: "2.0",
+      method: "eth_getTransactionReceipt",
+      params: [verifierTxHash],
+      id: 1,
+    });
+
+    const verifierReceiptDetails = verifierReceipt.body.result;
+
     // Current verifier contract is simply built from a no-op circuit.
     await this.requireWorkgroupContract("verifier");
-
-    //const shieldAddress = await this.deployWorkgroupShieldContract();
 
     // TODO::(Hamza) -- Replace this shield contract
     const shieldAddress = this.ganacheContracts["shield"]["address"];
@@ -1341,6 +1318,65 @@ export class ParticipantStack {
         `${this.org?.name} tracking shield under the address: ${shieldAddress}`
       );
     }
+
+    // Begin Shield Contract
+    const encodedShieldParams = abiCoder.encode(
+      ["address", "uint"],
+      [verifierReceiptDetails.contractAddress, 2]
+    );
+    const shieldBytecodeWithParams =
+      shieldContract.bytecode + encodedShieldParams.slice(2).toString();
+
+    const unsignedShieldTx: any = {
+      from: sender,
+      data: shieldBytecodeWithParams,
+      nonce: await managedSigner.getTransactionCount(),
+    };
+
+    gasEstimate = await managedSigner.estimateGas(unsignedShieldTx);
+    unsignedShieldTx.gasLimit = Math.ceil(Number(gasEstimate) * 1.1);
+
+    let shieldTxHash = await managedSigner
+      .sendTransaction(unsignedShieldTx)
+      .then((tx) => {
+        return tx.hash;
+      })
+      .catch((error) =>
+        console.log(`error(1): ${JSON.stringify(error, undefined, 2)}`)
+      );
+
+    const shieldReceipt = await this.commitMgrApiBob.post("/jsonrpc").send({
+      jsonrpc: "2.0",
+      method: "eth_getTransactionReceipt",
+      params: [shieldTxHash],
+      id: 1,
+    });
+
+    const shieldReceiptDetails = shieldReceipt.body.result;
+
+		this.ganacheContracts = {
+			...this.ganacheContracts,
+			...{
+				shield: {
+					address: shieldReceiptDetails.contractAddress,
+					name: "Shield",
+					network_id: 0,
+					params: {
+						compiled_artifacts: shieldContract,
+					},
+					type: "shield",
+				},
+				verifier: {
+					address: verifierReceiptDetails.contractAddress,
+					name: "Verifier",
+					network_id: 0,
+					params: {
+						compiled_artifacts: compilerOutput.contracts["verifier.sol"]["Verifier"]["evm"],
+					},
+					type: "verifier",
+				}
+			}
+	};
 
     this.baselineCircuitSetupArtifacts = setupArtifacts;
     this.workflowIdentifier = this.baselineCircuitSetupArtifacts?.identifier;
