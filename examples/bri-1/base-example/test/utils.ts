@@ -9,6 +9,12 @@ export const promisedTimeout = (ms) => {
   return new Promise(resolve => setTimeout(resolve, ms));
 };
 
+// @TODO::Hamza Move this to its own file.
+export enum Mgr {
+	Bob = 1,
+	Alice
+};
+
 export const authenticateUser = async (identHost, email, password) => {
   const auth = await Ident.authenticate({
     email: email,

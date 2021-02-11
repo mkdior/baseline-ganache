@@ -61,6 +61,7 @@ import {IdentWrapper} from "../../../bri-2/commit-mgr/src/db/controllers/Ident";
 import {NonceManager} from "@ethersproject/experimental";
 import {
 	scrapeInvitationToken,
+	Mgr,
 } from "../test/utils";
 
 // const baselineDocumentCircuitPath = '../../../lib/circuits/createAgreement.zok';
@@ -786,6 +787,7 @@ export class ParticipantStack {
 		const messagingEndpoint = await this.resolveMessagingEndpoint(
 			counterpartyAddr
 		);
+		const shieldAddr = invite.prvd.data.params.shield_contract_address;
 
 
 		this.natsBearerTokens[messagingEndpoint] =
@@ -793,42 +795,13 @@ export class ParticipantStack {
 
 		this.workflowIdentifier = invite.prvd.data.params.workflow_identifier;
 
-		// @TODO:: Write a wrapper around these functions for DRY
-		// @NEXT:: Continue here.. 
-		const trackedShield = await this.commitMgrApiAlice
-			.post("/jsonrpc")
-			.send({
-				jsonrpc: "2.0",
-				method: "baseline_track",
-				params: [invite.prvd.data.params.shield_contract_address],
-				id: 1,
-			})
-			.then((res) => {
-				// @TODO:: Return the error here instead of false... 
-				if (res.status !== 200) return false;
-				const parsedResponse: any = () => {
-					try {
-						return JSON.parse(res.text);
-					} catch (error) {
-						console.log(
-							`ERROR while parsing baseline_track response text ${JSON.stringify(
-								error,
-								undefined,
-								2
-							)}`
-						);
-						return undefined;
-					}
-				};
-				return parsedResponse().result;
-			}).catch((e) => console.log(JSON.stringify(e, undefined, 2)));
+		const trackedShield = await this.requestMgr(Mgr.Alice, "baseline_track", [shieldAddr]).then((res: any) => res).catch(() => undefined);
 
 		if (!trackedShield) {
 			console.log("WARNING: failed to track baseline shield contract");
 		} else {
-			console.log(`${this.baselineConfig.name} tracking shield under the address: ${invite.prvd.data.params.shield_contract_address}`);
+			console.log(`${this.baselineConfig.orgName} tracking shield under the address: ${shieldAddr}`);
 		}
-
 
 		// Register organization on-chain.
 		await this.registerOrganization(
@@ -849,6 +822,42 @@ export class ParticipantStack {
 	private marshalCircuitArg(val: string, fieldBits?: number): string[] {
 		const el = elementify(val) as Element;
 		return el.field(fieldBits || 128, 1, true);
+	}
+
+	// Wrapper for commit-mgr requests
+	// @TODO Finish the other params here
+  // baseline_getCommit => params => <++>
+  // baseline_getCommits => params => <++>
+  // baseline_getRoot => params => <++>
+  // baseline_getProof => params => <++>
+  // baseline_getTracked => params => <++>
+  // baseline_verifyAndPush => params => senderAddress, contractAddress, proof, publicInputs, newCommitment
+  // baseline_track => params => <++>
+  // baseline_untrack => params => <++>
+  // baseline_verify => params => contractAddress, leafValue, siblingNodes
+
+	async requestMgr(endpoint: Mgr, method: string, params: any): Promise<any> {
+		// Needed because each instance of commit-mgr can only track a single shield address.
+		const ep = (endpoint === Mgr.Bob) ? this.commitMgrApiBob : this.commitMgrApiAlice;
+
+		return await ep 
+			.post("/jsonrpc")
+			.send({
+				jsonrpc: "2.0",
+				method: method,
+				params: params,
+				id: 1,
+			})
+			.then((res: any) => {
+				if (res.status !== 200) {
+					return Promise.reject(res.error || "Status on request was NOT 200");
+				}
+				try {
+					return Promise.resolve(JSON.parse(res.text).result);
+				} catch (error) {
+					return Promise.reject(error);
+				}
+			});
 	}
 
 	async generateProof(type: string, msg: any): Promise<any> {
@@ -1310,33 +1319,7 @@ export class ParticipantStack {
 
 		// TODO::(Hamza) -- Replace this shield contract
 		const shieldAddress = this.ganacheContracts["shield"]["address"];
-
-		const trackedShield = await this.commitMgrApiBob
-			.post("/jsonrpc")
-			.send({
-				jsonrpc: "2.0",
-				method: "baseline_track",
-				params: [shieldAddress],
-				id: 1,
-			})
-			.then((res) => {
-				if (res.status !== 200) return false;
-				const parsedResponse: any = () => {
-					try {
-						return JSON.parse(res.text);
-					} catch (error) {
-						console.log(
-							`ERROR while parsing baseline_track response text ${JSON.stringify(
-								error,
-								undefined,
-								2
-							)}`
-						);
-						return undefined;
-					}
-				};
-				return parsedResponse().result;
-			});
+		const trackedShield = await this.requestMgr(Mgr.Bob, "baseline_track", [shieldAddress]).then((res: any) => res).catch(() => undefined);
 
 		if (!trackedShield) {
 			console.log("WARNING: failed to track baseline shield contract");
