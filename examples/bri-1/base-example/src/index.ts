@@ -59,7 +59,8 @@ import mongoose from "mongoose";
 // Testing
 import { IdentWrapper } from "../../../bri-2/commit-mgr/src/db/controllers/Ident";
 import { NonceManager } from "@ethersproject/experimental";
-import { scrapeInvitationToken, Mgr } from "../test/utils";
+import { scrapeInvitationToken } from "../test/utils";
+import { ContractMgr, Mgr } from "../test/utils-ganache";
 
 // const baselineDocumentCircuitPath = '../../../lib/circuits/createAgreement.zok';
 const baselineDocumentCircuitPath = "../../../lib/circuits/noopAgreement.zok";
@@ -108,6 +109,7 @@ export class ParticipantStack {
   private commitMgrApiAlice: any;
 
   private identService: any;
+  private contractService: any;
   private identConnection: any;
 
   constructor(baselineConfig: any, natsConfig: any) {
@@ -160,6 +162,13 @@ export class ParticipantStack {
     this.commitMgrApiAlice = request(process.env.A_MGR_API);
 
     if (this.baselineConfig.initiator) {
+      // Set up contract manager
+      const provider = new Eth.providers.JsonRpcProvider("http://0.0.0.0:8545");
+      this.contractService = new ContractMgr({
+        endpoint: "http://0.0.0.0:8545",
+        sender: (await provider.listAccounts())[2],
+        mgr: this.commitMgrApiBob,
+      });
       // Clear up merkle-store if it exists
       await this.merkleStoreSetup();
       // Setting up state variables for local Ganache accounts.
@@ -390,79 +399,23 @@ export class ParticipantStack {
       ).toString()
     ); // #4
 
-    const url = "http://0.0.0.0:8545";
-    const provider = new Eth.providers.JsonRpcProvider(url);
-    const signer = provider.getSigner((await provider.listAccounts())[2]);
-    const managedSigner = new NonceManager(signer);
-    const abiCoder = new Eth.utils.AbiCoder();
-    const sender = (await provider.listAccounts())[2];
+    let erc1820Address = await this.contractService.compileContracts([
+      {
+        byteCode: erc1820Contract.bytecode,
+      },
+    ]);
 
-    let erc1820Address: string, orgRegistryAddress: string;
-
-    // Begin ERC-1820 contract
-    const unsigned1820Tx: any = {
-      from: sender,
-      data: erc1820Contract.bytecode,
-      nonce: await managedSigner.getTransactionCount(),
-    };
-
-    let gasEstimate = await managedSigner.estimateGas(unsigned1820Tx);
-    unsigned1820Tx.gasLimit = Math.ceil(Number(gasEstimate) * 1.1);
-
-    let erc1820TxHash = await managedSigner
-      .sendTransaction(unsigned1820Tx)
-      .then((tx) => {
-        return tx.hash;
-      })
-      .catch((error) =>
-        console.log(`error(1): ${JSON.stringify(error, undefined, 2)}`)
-      );
-
-    const erc1820Receipt = await this.commitMgrApiBob.post("/jsonrpc").send({
-      jsonrpc: "2.0",
-      method: "eth_getTransactionReceipt",
-      params: [erc1820TxHash],
-      id: 1,
-    });
-
-    const erc1820ReceiptDetails = erc1820Receipt.body.result;
-    erc1820Address = erc1820ReceiptDetails.contractAddress;
-
-    // Begin ORG-Registry contract
-    const encodedOrgParams = abiCoder.encode(
-      ["bytes32"],
-      [Eth.utils.hexZeroPad(erc1820Address, 32)]
-    );
-    const orgBytecodeWithParams =
-      orgRegistryContract.bytecode + encodedOrgParams.slice(2).toString();
-
-    const unsignedOrgTx: any = {
-      from: sender,
-      data: orgBytecodeWithParams,
-      nonce: await managedSigner.getTransactionCount(),
-    };
-
-    gasEstimate = await managedSigner.estimateGas(unsignedOrgTx);
-    unsignedOrgTx.gasLimit = Math.ceil(Number(gasEstimate) * 1.1);
-
-    let orgTxHash = await managedSigner
-      .sendTransaction(unsignedOrgTx)
-      .then((tx) => {
-        return tx.hash;
-      })
-      .catch((error) =>
-        console.log(`error(1): ${JSON.stringify(error, undefined, 2)}`)
-      );
-
-    const orgReceipt = await this.commitMgrApiBob.post("/jsonrpc").send({
-      jsonrpc: "2.0",
-      method: "eth_getTransactionReceipt",
-      params: [orgTxHash],
-      id: 1,
-    });
-
-    const orgReceiptDetails = orgReceipt.body.result;
-    orgRegistryAddress = orgReceiptDetails.contractAddress;
+    let orgRegistryAddress = await this.contractService.compileContracts([
+      {
+        byteCode: orgRegistryContract.bytecode,
+        params: [
+          {
+            parType: "address",
+            parValue: erc1820Address[0],
+          },
+        ],
+      },
+    ]);
 
     this.ganacheContracts = {
       "erc1820-registry": {
@@ -1281,8 +1234,6 @@ export class ParticipantStack {
       throw new Error("verifier contract compilation failed");
     }
 
-    //@TODO Clean this abomination up
-
     const contractByte =
       "0x" +
       compilerOutput.contracts["verifier.sol"]["Verifier"]["evm"]["bytecode"][
@@ -1293,82 +1244,34 @@ export class ParticipantStack {
     ); // #2
 
     // Begin Verifier Contract
-    const url = "http://0.0.0.0:8545";
-    const provider = new Eth.providers.JsonRpcProvider(url);
-    const abiCoder = new Eth.utils.AbiCoder();
-    const signer = provider.getSigner((await provider.listAccounts())[2]);
-    const managedSigner = new NonceManager(signer);
-    const sender = (await provider.listAccounts())[2];
-    const unsignedVerifierTx: any = {
-      from: sender,
-      data: contractByte,
-      nonce: await managedSigner.getTransactionCount(),
-    };
+    const verifierAddress = await this.contractService.compileContracts([
+      {
+        bytecode: contractByte,
+      },
+    ]);
 
-    let gasEstimate = await managedSigner
-      .estimateGas(unsignedVerifierTx)
-      .catch((e) => console.log(JSON.stringify(e, undefined, 2)));
-    unsignedVerifierTx.gasLimit = Math.ceil(Number(gasEstimate) * 1.1);
+    console.log("Verifier " + verifierAddress);
 
-    let verifierTxHash = await managedSigner
-      .sendTransaction(unsignedVerifierTx)
-      .then((tx) => {
-        return tx.hash;
-      })
-      .catch((err) =>
-        console.log(`(Error 1): ${JSON.stringify(err, undefined, 2)}`)
-      );
+    const shieldAddress = await this.contractService.compileContracts([
+      {
+        bytecode: shieldContract.bytecode,
+        params: [
+          {
+            parType: "address",
+            parValue: verifierAddress[0],
+          },
+          {
+            parType: "uint",
+            parValue: "2",
+          },
+        ],
+      },
+    ]);
 
-    const verifierReceipt = await this.commitMgrApiBob.post("/jsonrpc").send({
-      jsonrpc: "2.0",
-      method: "eth_getTransactionReceipt",
-      params: [verifierTxHash],
-      id: 1,
-    });
+    console.log("Shield " + verifierAddress);
 
-    const verifierReceiptDetails = verifierReceipt.body.result;
-
-    // Current verifier contract is simply built from a no-op circuit.
-    //await this.requireWorkgroupContract("verifier");
-
-    // Begin Shield Contract
-    const encodedShieldParams = abiCoder.encode(
-      ["address", "uint"],
-      [verifierReceiptDetails.contractAddress, 2]
-    );
-    const shieldBytecodeWithParams =
-      shieldContract.bytecode + encodedShieldParams.slice(2).toString();
-
-    const unsignedShieldTx: any = {
-      from: sender,
-      data: shieldBytecodeWithParams,
-      nonce: await managedSigner.getTransactionCount(),
-    };
-
-    gasEstimate = await managedSigner.estimateGas(unsignedShieldTx);
-    unsignedShieldTx.gasLimit = Math.ceil(Number(gasEstimate) * 1.1);
-
-    let shieldTxHash = await managedSigner
-      .sendTransaction(unsignedShieldTx)
-      .then((tx) => {
-        return tx.hash;
-      })
-      .catch((error) =>
-        console.log(`error(1): ${JSON.stringify(error, undefined, 2)}`)
-      );
-
-    const shieldReceipt = await this.commitMgrApiBob.post("/jsonrpc").send({
-      jsonrpc: "2.0",
-      method: "eth_getTransactionReceipt",
-      params: [shieldTxHash],
-      id: 1,
-    });
-
-    const shieldReceiptDetails = shieldReceipt.body.result;
-
-    // TODO::(Hamza) -- Replace this shield contract
     const trackedShield = await this.requestMgr(Mgr.Bob, "baseline_track", [
-      shieldReceiptDetails.contractAddress,
+      shieldAddress,
     ])
       .then((res: any) => res)
       .catch(() => undefined);
@@ -1377,7 +1280,7 @@ export class ParticipantStack {
       console.log("WARNING: failed to track baseline shield contract");
     } else {
       console.log(
-        `${this.org?.name} tracking shield under the address: ${shieldReceiptDetails.contractAddress}`
+        `${this.org?.name} tracking shield under the address: ${shieldAddress}`
       );
     }
 
@@ -1385,7 +1288,7 @@ export class ParticipantStack {
       ...this.ganacheContracts,
       ...{
         shield: {
-          address: shieldReceiptDetails.contractAddress,
+          address: shieldAddress,
           name: "Shield",
           network_id: 0,
           params: {
@@ -1394,7 +1297,7 @@ export class ParticipantStack {
           type: "shield",
         },
         verifier: {
-          address: verifierReceiptDetails.contractAddress,
+          address: verifierAddress,
           name: "Verifier",
           network_id: 0,
           params: {
