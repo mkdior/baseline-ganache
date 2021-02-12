@@ -1329,23 +1329,7 @@ export class ParticipantStack {
     const verifierReceiptDetails = verifierReceipt.body.result;
 
     // Current verifier contract is simply built from a no-op circuit.
-    await this.requireWorkgroupContract("verifier");
-
-    // TODO::(Hamza) -- Replace this shield contract
-    const shieldAddress = this.ganacheContracts["shield"]["address"];
-    const trackedShield = await this.requestMgr(Mgr.Bob, "baseline_track", [
-      shieldAddress,
-    ])
-      .then((res: any) => res)
-      .catch(() => undefined);
-
-    if (!trackedShield) {
-      console.log("WARNING: failed to track baseline shield contract");
-    } else {
-      console.log(
-        `${this.org?.name} tracking shield under the address: ${shieldAddress}`
-      );
-    }
+    //await this.requireWorkgroupContract("verifier");
 
     // Begin Shield Contract
     const encodedShieldParams = abiCoder.encode(
@@ -1381,6 +1365,21 @@ export class ParticipantStack {
     });
 
     const shieldReceiptDetails = shieldReceipt.body.result;
+
+    // TODO::(Hamza) -- Replace this shield contract
+    const trackedShield = await this.requestMgr(Mgr.Bob, "baseline_track", [
+      shieldReceiptDetails.contractAddress,
+    ])
+      .then((res: any) => res)
+      .catch(() => undefined);
+
+    if (!trackedShield) {
+      console.log("WARNING: failed to track baseline shield contract");
+    } else {
+      console.log(
+        `${this.org?.name} tracking shield under the address: ${shieldReceiptDetails.contractAddress}`
+      );
+    }
 
     this.ganacheContracts = {
       ...this.ganacheContracts,
