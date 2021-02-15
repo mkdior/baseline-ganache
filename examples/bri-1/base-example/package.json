@@ -37,7 +37,7 @@
     "mongoose": "^5.10.7",
     "provide-js": "^1.5.8",
     "solc": "^0.7.0",
-    "zokrates-js": "1.0.25"
+    "zokrates-js": "1.0.27"
   },
   "devDependencies": {
     "@types/dotenv": "^8.2.0",
