@@ -469,7 +469,7 @@ export class ParticipantStack {
             await this.signMessage(
               vault.id!,
               this.babyJubJub?.id!,
-              payload.result.proof.proof.toString()
+              sha256(JSON.stringify(payload.result.proof.proof))
             )
           ).signature;
           payload.signatures = [signature];
