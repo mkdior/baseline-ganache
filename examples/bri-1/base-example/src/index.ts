@@ -541,7 +541,7 @@ export class ParticipantStack {
 
           if (leaf) {
             console.log(`inserted leaf... ${leaf}`);
-            // @TODO:: Replace this with commit-mgr <++> <++>
+            // @TODO:: Replace this with commit-mgr
             payload.sibling_path = (
               await this.baseline!.getProof(msg.shield, leaf.location())
             ).map((node) => node.location());
@@ -655,6 +655,9 @@ export class ParticipantStack {
       invite.prvd.data.params.authorized_bearer_token;
 
     this.workflowIdentifier = invite.prvd.data.params.workflow_identifier;
+    
+    // @TODO::Hamza Remove this once #299 has been merged
+		this.baselineCircuitSetupArtifacts = invite.prvd.data.params.zk_data;
 
     const trackedShield = await this.requestMgr(Mgr.Alice, "baseline_track", [
       shieldAddr,
@@ -774,16 +777,10 @@ export class ParticipantStack {
         throw new Error("invalid proof type");
     }
 
-    console.log(`Finished all cases`);
-
-    // @TODO::Hamza Plug the right circuit.
     // Comment out the rest of the args, no-op expects a single public parameter.
-    const args = [
-      this.marshalCircuitArg(commitment), // should == what we are computing in the circuit
-    ];
-    console.log(
-      `Finished building argument list: ${JSON.stringify(args, undefined, 2)}`
-    );
+		const args = this.marshalCircuitArg("90");
+    //const args = [
+    //  this.marshalCircuitArg(commitment), // should == what we are computing in the circuit
     //  {
     //    value: [
     //      this.marshalCircuitArg(commitment.substring(0, 16)),
@@ -804,7 +801,6 @@ export class ParticipantStack {
     //  },
     //];
 
-    console.log("Current organization: " + this.org!.name);
     //@TODO:: Check why we're in here as Alice from the get-go.
     //@F001
     if (!this.baselineCircuitArtifacts?.program) {
@@ -813,32 +809,14 @@ export class ParticipantStack {
       // Once a circuit has been created, it has to be synced 
       // between all parties involved. This is an artifical "sync"
       await this.compileBaselineCircuit();
+
+			// In general, running another setup doesn't work since it
+			// will generate a new keypair. This can't be done in our cases
+			// since the verifier deployed by bob contains the genesis-
+			// generated VK. This means that if we want to submit our proof
+			// to the same verifier ( which is mandatory ), we will need the
+			// PK from Bob's setup. This is now sent through the invite.
     }
-
-    console.log(
-      "Witness: " +
-        JSON.stringify(
-          {
-            witness: (await this.zk?.computeWitness(
-              this.baselineCircuitArtifacts!,
-              args
-            ))!.witness,
-          },
-          undefined,
-          2
-        )
-    );
-
-    console.log(
-      "Keypair: " +
-        JSON.stringify(
-          {
-            keypair: this.baselineCircuitSetupArtifacts?.keypair?.pk,
-          },
-          undefined,
-          2
-        )
-    );
 
     const proof = await this.zk?.generateProof(
       this.baselineCircuitArtifacts?.program,
@@ -1186,7 +1164,6 @@ export class ParticipantStack {
 
   async compileBaselineCircuit(): Promise<any> {
     const src = readFileSync(baselineDocumentCircuitPath).toString();
-		console.log("Src: "+ JSON.stringify(src, undefined, 2));
     this.baselineCircuitArtifacts = await this.zk?.compile(src, "main");
     return this.baselineCircuitArtifacts;
   }
@@ -1425,7 +1402,8 @@ export class ParticipantStack {
       local_invitor: bobOrg,
     });
 
-    // We now have to decode and encode the token once agian to replace the values.
+		// @TODO::Hamza -- Streamline this; looks messy.
+    // We now have to decode and encode the token once again to replace the values.
     // It's either that or construct a brand new token. But since there might be
     // values we still need; i'm opting for the former. Ident cross-references all
     // values passed in with whatever is listed in its local registry. If we pass
@@ -1449,6 +1427,7 @@ export class ParticipantStack {
       shield_contract_address: this.ganacheContracts["shield"].address,
       verifier_contract_address: this.ganacheContracts["verifier"].address,
       workflow_identifier: this.workflowIdentifier,
+			zk_data: this.baselineCircuitSetupArtifacts || "0x0"
     };
 
     // Time to sign the reconstructed object
