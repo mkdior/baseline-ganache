@@ -419,7 +419,7 @@ export class ParticipantStack {
 
     this.ganacheContracts = {
       "erc1820-registry": {
-        address: erc1820Address,
+        address: erc1820Address[0],
         name: "ERC1820Registry",
         network_id: 0,
         params: {
@@ -428,7 +428,7 @@ export class ParticipantStack {
         type: "erc1820-registry",
       },
       "organization-registry": {
-        address: orgRegistryAddress,
+        address: orgRegistryAddress[0],
         name: "OrgRegistry",
         network_id: 0,
         params: {
@@ -1246,7 +1246,7 @@ export class ParticipantStack {
     // Begin Verifier Contract
     const verifierAddress = await this.contractService.compileContracts([
       {
-        bytecode: contractByte,
+        byteCode: contractByte,
       },
     ]);
 
@@ -1254,7 +1254,7 @@ export class ParticipantStack {
 
     const shieldAddress = await this.contractService.compileContracts([
       {
-        bytecode: shieldContract.bytecode,
+        byteCode: shieldContract.bytecode,
         params: [
           {
             parType: "address",
@@ -1262,16 +1262,16 @@ export class ParticipantStack {
           },
           {
             parType: "uint",
-            parValue: "2",
+            parValue: 2,
           },
         ],
       },
     ]);
 
-    console.log("Shield " + verifierAddress);
+    console.log("Shield " + shieldAddress);
 
     const trackedShield = await this.requestMgr(Mgr.Bob, "baseline_track", [
-      shieldAddress,
+      shieldAddress[0],
     ])
       .then((res: any) => res)
       .catch(() => undefined);
@@ -1284,11 +1284,11 @@ export class ParticipantStack {
       );
     }
 
-    this.ganacheContracts = {
+    this.contracts = this.ganacheContracts = {
       ...this.ganacheContracts,
       ...{
         shield: {
-          address: shieldAddress,
+          address: shieldAddress[0],
           name: "Shield",
           network_id: 0,
           params: {
@@ -1297,7 +1297,7 @@ export class ParticipantStack {
           type: "shield",
         },
         verifier: {
-          address: verifierAddress,
+          address: verifierAddress[0],
           name: "Verifier",
           network_id: 0,
           params: {
@@ -1736,8 +1736,6 @@ export class ParticipantStack {
         orgAddress,
         Eth.utils.formatBytes32String(name),
         Eth.utils.toUtf8Bytes(messagingEndpoint),
-        // TODO:: Really not sure what should happen with this one.
-        // Is WhisperKey still even used? If so, what is it?
         Eth.utils.toUtf8Bytes(messagingBearerToken),
         Eth.utils.toUtf8Bytes(zkpPublicKey),
         Eth.utils.toUtf8Bytes("{}")
