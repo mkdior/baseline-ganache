@@ -85,8 +85,6 @@ export class ContractMgr {
             }
           }
         }
-        console.log(typeNames);
-        console.log(typeValues);
         unsignedTx.data =
           unsignedTx.data +
           this.abiCoder.encode(typeNames, typeValues).slice(2).toString();

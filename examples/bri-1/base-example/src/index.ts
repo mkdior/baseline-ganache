@@ -807,21 +807,13 @@ export class ParticipantStack {
     console.log("Current organization: " + this.org!.name);
     //@TODO:: Check why we're in here as Alice from the get-go.
     //@F001
-    if (this.baselineCircuitArtifacts?.program) {
-      this.compileBaselineCircuit();
+    if (!this.baselineCircuitArtifacts?.program) {
+      // Recompiling artifacts for Alice. This is fixed in #299
+      // ethereum-oasis/baseline/pull/299
+      // Once a circuit has been created, it has to be synced 
+      // between all parties involved. This is an artifical "sync"
+      await this.compileBaselineCircuit();
     }
-
-    console.log(`Proof generation starting now.`);
-    console.log(
-      "Program: " +
-        JSON.stringify(
-          {
-            program: this.baselineCircuitArtifacts?.program,
-          },
-          undefined,
-          2
-        )
-    );
 
     console.log(
       "Witness: " +
@@ -1194,13 +1186,16 @@ export class ParticipantStack {
 
   async compileBaselineCircuit(): Promise<any> {
     const src = readFileSync(baselineDocumentCircuitPath).toString();
+		console.log("Src: "+ JSON.stringify(src, undefined, 2));
     this.baselineCircuitArtifacts = await this.zk?.compile(src, "main");
     return this.baselineCircuitArtifacts;
   }
 
   async deployBaselineCircuit(): Promise<any> {
     // compile the circuit...
-    await this.compileBaselineCircuit();
+		if(!this.baselineCircuitArtifacts) {
+    	await this.compileBaselineCircuit();
+		}
 
     // perform trusted setup and deploy verifier/shield contract
     const setupArtifacts = await this.zk?.setup(this.baselineCircuitArtifacts);
