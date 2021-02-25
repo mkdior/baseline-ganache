@@ -1,12 +1,12 @@
 import { fileReader } from "../utils/utils";
-import { Priority, Contents, Job, Req } from "../types";
+import { Priority, Contents, Job, Req, SupplierType } from "../types";
 
 let MJcodes: Req = {
   11: {
     spare: "none",
     vessel: "CTV",
     tech: 2,
-    port: "none",
+    port: "no",
     taskLength: 1,
   },
   22: {
@@ -35,14 +35,14 @@ let MJcodes: Req = {
 export const retrieveJobs = async (
   scheduleList: string[],
   priority: Priority
-) => {
+): Promise<Job[]> => {
   if (
     !scheduleList.filter((scheduleFileName: any) => {
       if (scheduleFileName.match(new RegExp(/[.]*.txt/)))
         return scheduleFileName;
     })
   )
-    return;
+    return [];
 
   let scheduleData: Contents[] = [];
 
@@ -55,7 +55,7 @@ export const retrieveJobs = async (
         )
       );
   }
-  if (scheduleData.length === 0) return;
+  if (scheduleData.length === 0) return [];
 
   // We have tasks which are of priority:
   // LOW || MEDIUM || HIGH
@@ -76,11 +76,10 @@ export const retrieveJobs = async (
     }
   }
   // There were no jobs, return an empty array.
-  if (jobs.length === 0) return;
+  if (jobs.length === 0) return [];
 
   // Format the job.
-  const fJobs = jobFormatter(jobs);
-  console.log(JSON.stringify(fJobs, undefined, 2));
+  return jobFormatter(jobs);
 };
 
 const jobFormatter = (jobs: string[]): Job[] => {
@@ -97,4 +96,56 @@ const jobFormatter = (jobs: string[]): Job[] => {
     });
   }
   return formattedJobs;
+};
+
+// Can return multiple suppliers of same type, this is correct.
+export const reqExpander = (jobs: Job[]): { [id: string]: SupplierType[] } => {
+  let reqSupps: { [id: string]: SupplierType[] } = {};
+
+  for (const job of jobs) {
+    const taskId = job.id;
+    const mjId = job.mJCode;
+    // @TODO::Hamza -- Change the reqs structure, make it so that it's either false
+    // if no supplier of sort X is needed or some other value which indicates the number
+    // and/or type of supplier. As of now, stub this since we know what we need for each MJID.
+    switch (mjId) {
+      case "11" || "22": {
+        reqSupps = {
+          ...{
+            ...reqSupps,
+          },
+          [taskId]: [SupplierType.TECHNICIAN, SupplierType.TECHNICIAN],
+        };
+        break;
+      }
+      case "33": {
+        reqSupps = {
+          ...{
+            ...reqSupps,
+          },
+          [taskId]: [
+            SupplierType.SPARE,
+            SupplierType.TECHNICIAN,
+            SupplierType.TECHNICIAN,
+          ],
+        };
+        break;
+      }
+      case "44": {
+        reqSupps = {
+          ...{
+            ...reqSupps,
+          },
+          [taskId]: [
+            SupplierType.SPARE,
+            SupplierType.PORT,
+            ...new Array(12).fill(SupplierType.TECHNICIAN),
+          ],
+        };
+        break;
+      }
+    }
+  }
+
+  return reqSupps;
 };
