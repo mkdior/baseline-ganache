@@ -255,12 +255,12 @@ describe("baseline", () => {
 					before(async () => {
 						const recipient = await aliceApp.resolveOrganizationAddress();
 						await bobApp.sendProtocolMessage(recipient, Opcode.Baseline, {
-							doc: {
-								id: "uuidv4()",
-								name: "hello world",
-								url: "proto://deep/link/to/doc",
-								rfp_id: null,
-							},
+							//doc: {
+							//	id: "uuidv4()",
+							//	name: "hello world",
+							//	url: "proto://deep/link/to/doc",
+							//	rfp_id: null,
+							//},
 						});
 					});
 

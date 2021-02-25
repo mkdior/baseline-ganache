@@ -472,8 +472,16 @@ export class ParticipantStack {
               sha256(JSON.stringify(payload.result.proof.proof))
             )
           ).signature;
+
           payload.signatures = [signature];
+
+					console.log(`${this.org.name} just signed the document which is to be baselined.`);
+					console.log(`There are now ${payload.signatures.length} of the ${workflowSignatories} signatures collected.`);
+
+					// @TODO::Hamza -- valid for just two parties? I guess we change this once we have
+					// more than two counterparties.
           this.workgroupCounterparties.forEach(async (recipient) => {
+					console.log(`Sending a baseline request to ${msg.sender}`);
             this.sendProtocolMessage(msg.sender, Opcode.Baseline, payload);
           });
         } else if (payload.signatures.length < workflowSignatories) {
