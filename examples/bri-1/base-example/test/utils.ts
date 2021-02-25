@@ -99,7 +99,10 @@ export const scrapeInvitationToken = async (container) => {
   exec(`docker logs ${container}`, (err, stdout, stderr) => {
    logs = stderr.toString();
   });
-  await promisedTimeout(500);
+
+	// @TODO:: Check if the timeout is needed.
+  await promisedTimeout(2500);
+
   const matches = logs.match(/\"dispatch invitation\: (.*)\"/);
   if (matches && matches.length > 0) {
     return matches[matches.length - 1];
