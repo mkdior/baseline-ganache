@@ -60,3 +60,12 @@ export interface Contents {
   fileContents: any;
   fileTag?: any;
 }
+
+export type OverlapContainer = { [key: number]: { [key: string]: string[] } };
+export type SupplierPreferenceData = {
+  [id: string]: {
+    supplierCost: number;
+    supplierReputation: number;
+    supplierType: SupplierType;
+  };
+};

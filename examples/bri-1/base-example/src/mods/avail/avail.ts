@@ -1,6 +1,5 @@
-import { fileReader } from "../utils/utils";
+import { fileReader } from "../../utils/utils";
 import {
-  Structure,
   FileStructure,
   FileContentStructure,
   SupplierType,
@@ -16,7 +15,7 @@ const fileImporter = async (folders: string[]) => {
 
   // Queue all our contents for later processing
   let contentQueue: Promise<Contents>[] = [];
-  await new Promise(async (resolve: any, reject: any) => {
+  await new Promise(async (resolve: any, _: any) => {
     for (const folder of folders) {
       // Loop through all folders
       await new Promise((resolve: any, reject: any) => {
@@ -26,7 +25,7 @@ const fileImporter = async (folders: string[]) => {
             for (const file of files) {
               // Request file information of each file
               switch (folder) {
-                case "Ports": {
+                case "ports": {
                   contentQueue.push(
                     fileReader(
                       `moduleAvail/${folder}/${file}`,
@@ -35,16 +34,16 @@ const fileImporter = async (folders: string[]) => {
                   );
                   break;
                 }
-                case "Spares": {
+                case "spares": {
                   contentQueue.push(
                     fileReader(
                       `moduleAvail/${folder}/${file}`,
-                      SupplierType.SPARES
+                      SupplierType.SPARE
                     )
                   );
                   break;
                 }
-                case "Technicians": {
+                case "technicians": {
                   contentQueue.push(
                     fileReader(
                       `moduleAvail/${folder}/${file}`,
@@ -53,7 +52,7 @@ const fileImporter = async (folders: string[]) => {
                   );
                   break;
                 }
-                case "Vessels": {
+                case "vessels": {
                   contentQueue.push(
                     fileReader(
                       `moduleAvail/${folder}/${file}`,
@@ -63,8 +62,7 @@ const fileImporter = async (folders: string[]) => {
                   break;
                 }
                 default: {
-                  throw "Are you sure you're passing in the right folder name?";
-                  break;
+                  throw "Data file not found. Please pass in a correct folder-name.";
                 }
               }
             }
@@ -90,7 +88,7 @@ let suitabilityFinder = (
   }
   let keys_of_interest: Array<number> = new Array(30).fill(0);
 
-  loop1: for (var [index, day] of suppInfo.entries()) {
+  for (var [index, day] of suppInfo.entries()) {
     // We only care about the days starting from the start date
     if (index >= timeWindow[0] - 1) {
       // From starting day; check for each date if we have an available day
@@ -161,7 +159,7 @@ export const requestAvailability = async (
 
   // Work on the values
   await Promise.all(folderInfo).then(async (res: Contents[]) => {
-    new Promise((resolve, reject) => {
+    new Promise((resolve, _) => {
       res.map((entry: Contents) => {
         // @TODO Reformat this so that suitabilityFinder only accepts an array of days.
         const entryTag: SupplierType = entry.fileTag;
@@ -201,7 +199,7 @@ export const requestAvailability = async (
       });
       // Formatted all our suppliers, let's send it back and return it for further processing.
       resolve(suppFormatted);
-    }).then((e: any) => {
+    }).then((_: any) => {
       Promise.resolve(suppFormatted);
     });
   });
