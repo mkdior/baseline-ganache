@@ -62,8 +62,8 @@ import { NonceManager } from "@ethersproject/experimental";
 import { scrapeInvitationToken } from "../test/utils";
 import { ContractMgr, Mgr } from "../test/utils-ganache";
 
-// const baselineDocumentCircuitPath = '../../../lib/circuits/createAgreement.zok';
-const baselineDocumentCircuitPath = "../../../lib/circuits/noopAgreement.zok";
+const baselineDocumentCircuitPath = "./src/zkp/src/stateVerifier.zok";
+
 const baselineProtocolMessageSubject = "baseline.inbound";
 
 const zokratesImportResolver = (location, path) => {
@@ -1171,6 +1171,7 @@ export class ParticipantStack {
   }
 
   async compileBaselineCircuit(): Promise<any> {
+		console.log(baselineDocumentCircuitPath);
     const src = readFileSync(baselineDocumentCircuitPath).toString();
     this.baselineCircuitArtifacts = await this.zk?.compile(src, "main");
     return this.baselineCircuitArtifacts;
