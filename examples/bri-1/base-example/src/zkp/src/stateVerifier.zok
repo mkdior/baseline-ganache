@@ -1,0 +1,21 @@
+import "hashes/sha256/512bitPacked" as sha256packed
+def main(private field State, private field MJ_ID, private field SupplierID, private field DocHash1, private field DocHash2, private field ContractH1, private field ContractH2, private field LC1, private field LC2, private field NC1, private field NC2) -> (field, field):
+    field a = if (State == 1 || State == 2 || State == 5) && ContractH1 == State && ContractH2 == State && SupplierID == State && DocHash1 == State && DocHash2 == State then 0 else 1 fi
+    field b = a * ContractH1
+    field c = a * ContractH2
+    field d = a * SupplierID
+    field e = a * DocHash1
+    field f = a * DocHash2
+    
+    field g = if (State == 3 || State == 4) && DocHash1 != ContractH1 && DocHash2 != ContractH2 then 1 else 0 fi
+    field h = g * b
+    field k = g * c
+    
+    field[2] Hash1 = sha256packed([State, MJ_ID, d, LC1])
+    field[2] Hash2 = sha256packed([e, f, h, LC2])
+    
+    field[2] NewHash = sha256packed([Hash1[0], Hash1[1], Hash2[0], Hash2[1]])
+    assert(NewHash[0] == NC1)
+    assert(NewHash[1] == NC2)
+    
+    return MJ_ID, State
