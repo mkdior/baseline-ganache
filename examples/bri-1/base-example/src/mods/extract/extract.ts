@@ -1,4 +1,4 @@
-import { fileReader } from "../utils/utils";
+import { fileReader } from "../../utils/utils";
 import { Priority, Contents, Job, Req, SupplierType } from "../types";
 
 let MJcodes: Req = {

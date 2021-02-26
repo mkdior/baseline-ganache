@@ -1,5 +1,6 @@
 import { fileReader } from "../../utils/utils";
 import {
+  Structure,
   FileStructure,
   FileContentStructure,
   SupplierType,
@@ -15,7 +16,7 @@ const fileImporter = async (folders: string[]) => {
 
   // Queue all our contents for later processing
   let contentQueue: Promise<Contents>[] = [];
-  await new Promise(async (resolve: any, _: any) => {
+  await new Promise(async (resolve: any, reject: any) => {
     for (const folder of folders) {
       // Loop through all folders
       await new Promise((resolve: any, reject: any) => {
@@ -62,7 +63,8 @@ const fileImporter = async (folders: string[]) => {
                   break;
                 }
                 default: {
-                  throw "Data file not found. Please pass in a correct folder-name.";
+                  throw "Are you sure you're passing in the right folder name?";
+                  break;
                 }
               }
             }
@@ -88,7 +90,7 @@ let suitabilityFinder = (
   }
   let keys_of_interest: Array<number> = new Array(30).fill(0);
 
-  for (var [index, day] of suppInfo.entries()) {
+  loop1: for (var [index, day] of suppInfo.entries()) {
     // We only care about the days starting from the start date
     if (index >= timeWindow[0] - 1) {
       // From starting day; check for each date if we have an available day
@@ -159,7 +161,7 @@ export const requestAvailability = async (
 
   // Work on the values
   await Promise.all(folderInfo).then(async (res: Contents[]) => {
-    new Promise((resolve, _) => {
+    new Promise((resolve, reject) => {
       res.map((entry: Contents) => {
         // @TODO Reformat this so that suitabilityFinder only accepts an array of days.
         const entryTag: SupplierType = entry.fileTag;
@@ -199,7 +201,7 @@ export const requestAvailability = async (
       });
       // Formatted all our suppliers, let's send it back and return it for further processing.
       resolve(suppFormatted);
-    }).then((_: any) => {
+    }).then((e: any) => {
       Promise.resolve(suppFormatted);
     });
   });
