@@ -22,8 +22,8 @@
     "big-integer": "^1.6.48",
     "hex-to-binary": "^1.0.1",
     "keccak": "^3.0.1",
-    "provide-js": "^1.5.1",
-    "zokrates-js": "^1.0.25"
+    "provide-js": "^1.5.10",
+    "zokrates-js": "file:tars/zokrates-js-1.0.28.tar"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^8.3.4",

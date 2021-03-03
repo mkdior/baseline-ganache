@@ -133,3 +133,41 @@ export const vendNatsAuthorization = async (natsConfig, subject): Promise<string
     permissions,
   );
 };
+
+
+export const readBytes = (fd: any, sharedBuffer: any) => {
+	const fs = require('fs');
+    return new Promise((resolve: any, reject: any) => {
+        fs.read(
+            fd, 
+            sharedBuffer,
+            0,
+            sharedBuffer.length,
+            null,
+            (err: any) => {
+                if(err) { return reject(err); }
+                resolve();
+            }
+        );
+    });
+}
+
+export async function* generateChunks(filePath: any, size: any) {
+    const sharedBuffer = Buffer.alloc(size);
+		const fs = require('fs');
+    const stats = fs.statSync(filePath); // file details
+    const fd = fs.openSync(filePath); // file descriptor
+    let bytesRead = 0; // how many bytes were read
+    let end = size; 
+    
+    for(let i = 0; i < Math.ceil(stats.size / size); i++) {
+        await readBytes(fd, sharedBuffer);
+        bytesRead = (i + 1) * size;
+        if(bytesRead > stats.size) {
+           // When we reach the end of file, 
+           // we have to calculate how many bytes were actually read
+           end = size - (bytesRead - stats.size);
+        }
+        yield sharedBuffer.slice(0, end);
+    }
+}

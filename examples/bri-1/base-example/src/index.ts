@@ -59,14 +59,19 @@ import mongoose from "mongoose";
 // Testing
 import { IdentWrapper } from "../../../bri-2/commit-mgr/src/db/controllers/Ident";
 import { NonceManager } from "@ethersproject/experimental";
-import { scrapeInvitationToken } from "../test/utils";
+import { scrapeInvitationToken, readBytes, generateChunks } from "../test/utils";
 import { ContractMgr, Mgr } from "../test/utils-ganache";
-
-const baselineDocumentCircuitPath = "./src/zkp/src/stateVerifier.zok";
 
 const baselineProtocolMessageSubject = "baseline.inbound";
 
-const zokratesImportResolver = (location, path) => {
+const baselineDocumentSource = "./src/zkp/src";
+const baselineDocumentSourceAlt = "./src/zkp/src";
+const baselineDocumentCircuitPath = "./src/zkp/artifacts/stateVerifierSHA";
+const baselineDocumentCircuitPathAlt = "./src/zkp/artifacts/stateVerifierPED";
+// proving.key // verification.key
+const baselineKeys = "./src/zkp/artifacts/stateVerifierSHA/keys";
+
+const zokratesImportResolver = (_: any, path: any) => {
   let zokpath = `../../../lib/circuits/${path}`;
   if (!zokpath.match(/\.zok$/i)) {
     zokpath = `${zokpath}.zok`;
@@ -665,7 +670,7 @@ export class ParticipantStack {
     this.workflowIdentifier = invite.prvd.data.params.workflow_identifier;
     
     // @TODO::Hamza Remove this once #299 has been merged
-		this.baselineCircuitSetupArtifacts = invite.prvd.data.params.zk_data;
+		//this.baselineCircuitSetupArtifacts = invite.prvd.data.params.zk_data;
 
     const trackedShield = await this.requestMgr(Mgr.Alice, "baseline_track", [
       shieldAddr,
@@ -1170,130 +1175,168 @@ export class ParticipantStack {
     return await vault.fetchVaultKeys(vlt.id!, {});
   }
 
-  async compileBaselineCircuit(): Promise<any> {
-		console.log(baselineDocumentCircuitPath);
-    const src = readFileSync(baselineDocumentCircuitPath).toString();
-    this.baselineCircuitArtifacts = await this.zk?.compile(src, "main");
-    return this.baselineCircuitArtifacts;
-  }
+	async compileBaselineCircuit(): Promise<any> {
+		//baselineCircuitArtifacts
+		//-------------------------
+		//IZKSnarkCompilationArtifacts {
+		//	program: Uint8Array,
+		//	abi: string,
+		//} <++>
 
-  async deployBaselineCircuit(): Promise<any> {
-    // compile the circuit...
-		if(!this.baselineCircuitArtifacts) {
-    	await this.compileBaselineCircuit();
+		const CHUNK_SIZE = 10000000;
+		const fs = require('fs');	
+		const abi = fs.readFileSync(`${baselineDocumentCircuitPath}/abi.json`).toString();
+
+		let bufferCollecter = new Uint8Array();
+
+		for await (const chunk of generateChunks(`${baselineDocumentCircuitPath}/out`, CHUNK_SIZE)) {
+			let temp = new Uint8Array(chunk);
+			let z = new Uint8Array(bufferCollecter.length + temp.length);
+			z.set(bufferCollecter);
+			z.set(temp, bufferCollecter.length);
+
+			bufferCollecter = z;
 		}
 
-    // perform trusted setup and deploy verifier/shield contract
-    const setupArtifacts = await this.zk?.setup(this.baselineCircuitArtifacts);
+		this.baselineCircuitArtifacts = {
+			program: bufferCollecter.slice(12, bufferCollecter.length),
+			abi: abi
+		};
 
-    const compilerOutput = JSON.parse(
-      solidityCompile(
-        JSON.stringify({
-          language: "Solidity",
-          sources: {
-            "verifier.sol": {
-              content: setupArtifacts?.verifierSource
-                ?.replace(/\^0.6.1/g, "^0.7.3")
-                .replace(/view/g, ""),
-            },
-          },
-          settings: {
-            outputSelection: {
-              "*": {
-                "*": ["*"],
-              },
-            },
-          },
-        })
-      )
-    );
+		return this.baselineCircuitArtifacts;
+	}
 
-    if (
-      !compilerOutput.contracts ||
-      !compilerOutput.contracts["verifier.sol"]
-    ) {
-      throw new Error("verifier contract compilation failed");
-    }
+	async deployBaselineCircuit(): Promise<any> {
+		// compile the circuit...
+		if (!this.baselineCircuitArtifacts) {
+			await this.compileBaselineCircuit();
+		}
 
-    const contractByte =
-      "0x" +
-      compilerOutput.contracts["verifier.sol"]["Verifier"]["evm"]["bytecode"][
-        "object"
-      ];
-    const shieldContract = JSON.parse(
-      readFileSync("../../bri-2/contracts/artifacts/Shield.json").toString()
-    ); // #2
+		// @TODO::Hamza -- Enable this again, for testing purposes
+		// we're using zokrates-CLI to pre-compile and generate everything.
 
-    // Begin Verifier Contract
-    const verifierAddress = await this.contractService.compileContracts([
-      {
-        byteCode: contractByte,
-      },
-    ]);
+		// Perform trusted setup and deploy verifier/shield contract
+		//console.log(this.baselineCircuitArtifacts);
+		//const setupArtifacts: IZKSnarkTrustedSetupArtifacts =
+		//	await (async (): Promise<IZKSnarkTrustedSetupArtifacts> => {
+		//		const stateCapture = self;
+		//		self = (undefined as any);
+		//		const artifacts = await this.zk?.setup(this.baselineCircuitArtifacts);
+		//		self = stateCapture;
+		//		return artifacts!;
+		//	})();
 
-    console.log("Verifier " + verifierAddress);
 
-    const shieldAddress = await this.contractService.compileContracts([
-      {
-        byteCode: shieldContract.bytecode,
-        params: [
-          {
-            parType: "address",
-            parValue: verifierAddress[0],
-          },
-          {
-            parType: "uint",
-            parValue: 2,
-          },
-        ],
-      },
-    ]);
+		const compilerOutput = JSON.parse(
+			solidityCompile(
+				JSON.stringify({
+					language: "Solidity",
+					sources: {
+						"verifier.sol": {
+							//content: setupArtifacts?.verifierSource
+							content: require('fs').readFileSync(`${baselineDocumentCircuitPath}/verifier.sol`).toString()
+								?.replace(/\^0.6.1/g, "^0.7.3")
+								.replace(/view/g, ""),
+						},
+					},
+					settings: {
+						outputSelection: {
+							"*": {
+								"*": ["*"],
+							},
+						},
+					},
+				})
+			)
+		);
 
-    console.log("Shield " + shieldAddress);
+		if (
+			!compilerOutput.contracts ||
+			!compilerOutput.contracts["verifier.sol"]
+		) {
+			throw new Error("verifier contract compilation failed");
+		}
 
-    const trackedShield = await this.requestMgr(Mgr.Bob, "baseline_track", [
-      shieldAddress[0],
-    ])
-      .then((res: any) => res)
-      .catch(() => undefined);
+		const contractByte =
+			"0x" +
+			compilerOutput.contracts["verifier.sol"]["Verifier"]["evm"]["bytecode"][
+			"object"
+			];
 
-    if (!trackedShield) {
-      console.log("WARNING: failed to track baseline shield contract");
-    } else {
-      console.log(
-        `${this.org?.name} tracking shield under the address: ${shieldAddress}`
-      );
-    }
+		const shieldContract = JSON.parse(
+			readFileSync("../../bri-2/contracts/artifacts/Shield.json").toString()
+		); // #2
 
-    this.contracts = this.ganacheContracts = {
-      ...this.ganacheContracts,
-      ...{
-        shield: {
-          address: shieldAddress[0],
-          name: "Shield",
-          network_id: 0,
-          params: {
-            compiled_artifacts: shieldContract,
-          },
-          type: "shield",
-        },
-        verifier: {
-          address: verifierAddress[0],
-          name: "Verifier",
-          network_id: 0,
-          params: {
-            compiled_artifacts:
-              compilerOutput.contracts["verifier.sol"]["Verifier"]["evm"],
-          },
-          type: "verifier",
-        },
-      },
-    };
+		// Begin Verifier Contract
+		const verifierAddress = await this.contractService.compileContracts([
+			{
+				byteCode: contractByte,
+			},
+		]);
 
-    this.baselineCircuitSetupArtifacts = setupArtifacts;
-    this.workflowIdentifier = this.baselineCircuitSetupArtifacts?.identifier;
+		console.log("Verifier " + verifierAddress);
 
-    return setupArtifacts;
+		const shieldAddress = await this.contractService.compileContracts([
+			{
+				byteCode: shieldContract.bytecode,
+				params: [
+					{
+						parType: "address",
+						parValue: verifierAddress[0],
+					},
+					{
+						parType: "uint",
+						parValue: 2,
+					},
+				],
+			},
+		]);
+
+		console.log("Shield " + shieldAddress);
+
+		const trackedShield = await this.requestMgr(Mgr.Bob, "baseline_track", [
+			shieldAddress[0],
+		])
+			.then((res: any) => res)
+			.catch(() => undefined);
+
+		if (!trackedShield) {
+			console.log("WARNING: failed to track baseline shield contract");
+		} else {
+			console.log(
+				`${this.org?.name} tracking shield under the address: ${shieldAddress}`
+			);
+		}
+
+		this.contracts = this.ganacheContracts = {
+			...this.ganacheContracts,
+			...{
+				shield: {
+					address: shieldAddress[0],
+					name: "Shield",
+					network_id: 0,
+					params: {
+						compiled_artifacts: shieldContract,
+					},
+					type: "shield",
+				},
+				verifier: {
+					address: verifierAddress[0],
+					name: "Verifier",
+					network_id: 0,
+					params: {
+						compiled_artifacts:
+							compilerOutput.contracts["verifier.sol"]["Verifier"]["evm"],
+					},
+					type: "verifier",
+				},
+			},
+		};
+
+		//this.baselineCircuitSetupArtifacts = setupArtifacts;
+		this.workflowIdentifier = uuid4();//this.baselineCircuitSetupArtifacts?.identifier;
+
+		return Promise.resolve();
   }
 
   async track(): Promise<any> {}
@@ -1424,6 +1467,8 @@ export class ParticipantStack {
     // Decode invite and reconstruct
     let decodedInvite = jwt.decode(inviteToken) as { [key: string]: any };
 
+		console.log(require('fs').readFileSync(`${baselineDocumentSource}/stateVerifier.zok`).toString());
+
     decodedInvite.prvd.data.params = {
       erc1820_registry_contract_address: this.ganacheContracts[
         "erc1820-registry"
@@ -1436,12 +1481,22 @@ export class ParticipantStack {
       shield_contract_address: this.ganacheContracts["shield"].address,
       verifier_contract_address: this.ganacheContracts["verifier"].address,
       workflow_identifier: this.workflowIdentifier,
-			zk_data: this.baselineCircuitSetupArtifacts || "0x0"
-    };
+			zk_data:  {
+				// @TODO::Hamza Exchange proving key!
+				zkSource: require('fs').readFileSync(`${baselineDocumentSource}/stateVerifier.zok`) || "0x0"
+			}
+		};
+
+		console.log("Pre token signing");
 
     // Time to sign the reconstructed object
-    return Promise.resolve(jwt.sign(decodedInvite, "0x0"));
+		const token = jwt.sign(decodedInvite, "0x0");
+
+		console.log(`Post token signing: \n ${token}`);
+
+		return Promise.resolve(token);
   }
+
 
   private async requireCapabilities(): Promise<void> {
     let interval;
