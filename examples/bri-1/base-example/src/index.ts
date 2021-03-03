@@ -44,6 +44,7 @@ import {
   capabilitiesFactory,
   nchainClientFactory,
 } from "provide-js";
+
 import { readFileSync } from "fs";
 import { compile as solidityCompile } from "solc";
 import * as jwt from "jsonwebtoken";
@@ -978,7 +979,7 @@ export class ParticipantStack {
     }
 
     return (
-      await Ident.clientFactory(
+      Ident.clientFactory(
         this.workgroupToken,
         this.baselineConfig?.identApiScheme,
         this.baselineConfig?.identApiHost
@@ -1046,7 +1047,7 @@ export class ParticipantStack {
 
   async fetchOrganization(address: string): Promise<Organization> {
     // fetchOrganization == On-chain registration.
-    const orgRegistryContract = await this.requireWorkgroupContract(
+    await this.requireWorkgroupContract(
       "organization-registry"
     );
 
@@ -1339,8 +1340,6 @@ export class ParticipantStack {
 		return Promise.resolve();
   }
 
-  async track(): Promise<any> {}
-
   async getTracked(): Promise<any> {
     const trackedShield = await this.commitMgrApiBob
       .post("/jsonrpc")
@@ -1350,7 +1349,7 @@ export class ParticipantStack {
         params: [],
         id: 1,
       })
-      .then((res) => {
+      .then((res: any) => {
         if (res.status !== 200) return false;
         const parsedResponse: any = () => {
           try {
@@ -1502,7 +1501,7 @@ export class ParticipantStack {
     let interval;
     const promises = [] as any;
     promises.push(
-      new Promise((resolve, reject) => {
+      new Promise((resolve, _) => {
         interval = setInterval(async () => {
           if (this.capabilities?.getBaselineRegistryContracts()) {
             resolve();
@@ -1552,7 +1551,7 @@ export class ParticipantStack {
     let interval;
     const promises = [] as any;
     promises.push(
-      new Promise((resolve, reject) => {
+      new Promise((resolve, _) => {
         interval = setInterval(async () => {
           if (this.workgroup) {
             resolve();
@@ -1572,14 +1571,14 @@ export class ParticipantStack {
 
     const promises = [] as any;
     promises.push(
-      new Promise((resolve, reject) => {
+      new Promise((resolve, _) => {
         interval = setInterval(async () => {
           this.resolveWorkgroupContract(type)
             .then((cntrct) => {
               contract = cntrct;
               resolve();
             })
-            .catch((err) => {});
+            .catch((_) => {});
         }, 5000);
       })
     );
@@ -1643,7 +1642,7 @@ export class ParticipantStack {
     ).id;
 
     // Phase one -- Register organization locally
-    const identOrganization = await (await this.identConnector()).service
+    await (await this.identConnector()).service
       .createOrganization({
         createdAt: new Date().toString(),
         name: name,
@@ -1653,7 +1652,7 @@ export class ParticipantStack {
           messaging_endpoint: messagingEndpoint,
         },
       })
-      .then(async (org) => {
+      .then(async (org: any) => {
         this.org = JSON.parse(
           JSON.stringify({
             createdAt: org["createdAt"],
@@ -1677,17 +1676,14 @@ export class ParticipantStack {
       this.hdwallet = await this.createVaultKey(vault.id!, "BIP39");
 
       // Phase three -- Register organization in registry
-      const resp = await this.g_registerOrganization(
+      await this.g_registerOrganization(
         this.org.name,
         (await this.fetchKeys())[2].address,
         this.org.messaging_endpoint,
         this.natsBearerTokens[this.org.messaging_endpoint] || "0x",
-        this.babyJubJub?.publicKey!
-      ).then((resp) => {
-        return resp;
-      });
+        this.babyJubJub?.publicKey!); 
 
-      const localOrganization = await this.registerWorkgroupOrganization();
+      await this.registerWorkgroupOrganization();
     }
 
     return this.org;
@@ -1712,7 +1708,7 @@ export class ParticipantStack {
 
     return await orgConnector
       .getOrg(address)
-      .then((rawOrg) => {
+      .then((rawOrg: any) => {
         return Promise.resolve({
           address: rawOrg[0],
           name: Eth.utils.parseBytes32String(rawOrg[1]),
@@ -1722,7 +1718,7 @@ export class ParticipantStack {
           metadata: Eth.utils.toUtf8String(rawOrg[5]),
         });
       })
-      .catch((err) => Promise.reject(err));
+      .catch((err: any) => Promise.reject(err));
   }
 
   async g_registerOrganization(
@@ -1778,7 +1774,7 @@ export class ParticipantStack {
         Eth.utils.toUtf8Bytes(zkpPublicKey),
         Eth.utils.toUtf8Bytes("{}")
       )
-      .then((res) => {
+      .then((res: any) => {
         // Decode our transaction data.
         const tempOrg = Eth.utils.defaultAbiCoder.decode(
           ["address", "bytes32", "bytes", "bytes", "bytes", "bytes"],
@@ -1811,7 +1807,7 @@ export class ParticipantStack {
 
     const subscription = await this.nats?.subscribe(
       baselineProtocolMessageSubject,
-      (msg, err) => {
+      (msg, ) => {
         this.protocolMessagesRx++;
         this.dispatchProtocolMessage(
           unmarshalProtocolMessage(Buffer.from(msg.data))
