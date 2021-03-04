@@ -257,13 +257,17 @@ describe("baseline", () => {
 			describe("workflow", () => {
 				describe("workstep", () => {
 					// For testing purposes we've condensed our current workflow in this single workstep.
-					let maintananceData;
+					let maintenanceData;
 
 					before(async () => {});
 
-					it("should extract all currently available maintanance jobs from some arbitrary data-source", async () => {
-						maintananceData = await retrieveJobs(["./src/mods/extract/data/schedule.txt"], modTypes.Priority.HIGH);
-						assert(maintananceData.length > 0);
+					it("should extract all currently available maintenance jobs from some arbitrary data-source", async () => {
+						maintenanceData = await retrieveJobs(["./src/mods/extract/data/schedule.txt"], modTypes.Priority.HIGH);
+						assert(maintenanceData.length > 0);
+					});
+
+					it("should generate a genesis commitment based on all current maintenance data", async () => {
+
 					});
 
 				});

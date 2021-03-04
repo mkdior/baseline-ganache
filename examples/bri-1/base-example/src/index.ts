@@ -718,14 +718,14 @@ export class ParticipantStack {
 
   // Wrapper for commit-mgr requests
   // @TODO Finish the other params here
-  // baseline_getCommit => params => <++>
-  // baseline_getCommits => params => <++>
-  // baseline_getRoot => params => <++>
-  // baseline_getProof => params => <++>
-  // baseline_getTracked => params => <++>
+  // baseline_getCommit => params => contractAddress, leafIndex
+  // baseline_getCommits => params => contractAddress, startLeafIndex, count
+  // baseline_getRoot => params => contractAddress
+  // baseline_getProof => params => contractAddress, leafIndex
+  // baseline_getTracked => params => NONE
   // baseline_verifyAndPush => params => senderAddress, contractAddress, proof, publicInputs, newCommitment
-  // baseline_track => params => <++>
-  // baseline_untrack => params => <++>
+  // baseline_track => params => contractAddress
+  // baseline_untrack => params => contractAddress, prune
   // baseline_verify => params => contractAddress, leafValue, siblingNodes
 
   async requestMgr(endpoint: Mgr, method: string, params: any): Promise<any> {
