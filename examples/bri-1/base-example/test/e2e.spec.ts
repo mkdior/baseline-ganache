@@ -17,12 +17,16 @@ import {
 	scrapeInvitationToken,
 } from "./utils";
 
+// @TODO::Hamza, create a single file containing all exports for these mods
+// Section related to the WF PoC
+import * as modTypes from "../src/mods/types";
+
+import { retrieveJobs } from "../src/mods/extract/extract";
+
 const aliceCorpName = "Alice Corp";
 const bobCorpName = "Bob Corp";
 
 const ropstenNetworkId = "66d44f30-9092-4182-a3c4-bc02736d6ae5";
-const kovanNetworkId = "8d31bf48-df6b-4a71-9d7c-3cb291111e27";
-const goerliNetworkId = "1b16996e-3595-4985-816c-043345d22f8c";
 const networkId = process.env["NCHAIN_NETWORK_ID"] || ropstenNetworkId;
 
 const setupUser = async (identHost, firstname, lastname, email, password) => {
@@ -252,32 +256,16 @@ describe("baseline", () => {
 
 			describe("workflow", () => {
 				describe("workstep", () => {
-					before(async () => {
-						const recipient = await aliceApp.resolveOrganizationAddress();
-						await bobApp.sendProtocolMessage(recipient, Opcode.Baseline, {
-							//doc: {
-							//	id: "uuidv4()",
-							//	name: "hello world",
-							//	url: "proto://deep/link/to/doc",
-							//	rfp_id: null,
-							//},
-						});
+					// For testing purposes we've condensed our current workflow in this single workstep.
+					let maintananceData;
+
+					before(async () => {});
+
+					it("should extract all currently available maintanance jobs from some arbitrary data-source", async () => {
+						maintananceData = await retrieveJobs(["./src/mods/extract/data/schedule.txt"], modTypes.Priority.HIGH);
+						assert(maintananceData.length > 0);
 					});
 
-					it("should increment protocol message tx count for the sender", async () => {
-						assert(
-							bobApp.getProtocolMessagesTx() === 1,
-							"protocol messages tx should equal 1"
-						);
-					});
-
-					it("should increment protocol message rx count for the recipient", async () => {
-						await promisedTimeout(50);
-						assert(
-							aliceApp.getProtocolMessagesRx() === 1,
-							"protocol messages rx should equal 1"
-						);
-					});
 				});
 			});
 		});

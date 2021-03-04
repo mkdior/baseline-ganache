@@ -60,7 +60,11 @@ import mongoose from "mongoose";
 // Testing
 import { IdentWrapper } from "../../../bri-2/commit-mgr/src/db/controllers/Ident";
 import { NonceManager } from "@ethersproject/experimental";
-import { scrapeInvitationToken, readBytes, generateChunks } from "../test/utils";
+import {
+  scrapeInvitationToken,
+  readBytes,
+  generateChunks,
+} from "../test/utils";
 import { ContractMgr, Mgr } from "../test/utils-ganache";
 
 const baselineProtocolMessageSubject = "baseline.inbound";
@@ -481,13 +485,17 @@ export class ParticipantStack {
 
           payload.signatures = [signature];
 
-					console.log(`${this.org.name} just signed the document which is to be baselined.`);
-					console.log(`There are now ${payload.signatures.length} of the ${workflowSignatories} signatures collected.`);
+          console.log(
+            `${this.org.name} just signed the document which is to be baselined.`
+          );
+          console.log(
+            `There are now ${payload.signatures.length} of the ${workflowSignatories} signatures collected.`
+          );
 
-					// @TODO::Hamza -- valid for just two parties? I guess we change this once we have
-					// more than two counterparties.
+          // @TODO::Hamza -- valid for just two parties? I guess we change this once we have
+          // more than two counterparties.
           this.workgroupCounterparties.forEach(async (recipient) => {
-					console.log(`Sending a baseline request to ${msg.sender}`);
+            console.log(`Sending a baseline request to ${msg.sender}`);
             this.sendProtocolMessage(msg.sender, Opcode.Baseline, payload);
           });
         } else if (payload.signatures.length < workflowSignatories) {
@@ -669,9 +677,9 @@ export class ParticipantStack {
       invite.prvd.data.params.authorized_bearer_token;
 
     this.workflowIdentifier = invite.prvd.data.params.workflow_identifier;
-    
+
     // @TODO::Hamza Remove this once #299 has been merged
-		//this.baselineCircuitSetupArtifacts = invite.prvd.data.params.zk_data;
+    //this.baselineCircuitSetupArtifacts = invite.prvd.data.params.zk_data;
 
     const trackedShield = await this.requestMgr(Mgr.Alice, "baseline_track", [
       shieldAddr,
@@ -792,7 +800,7 @@ export class ParticipantStack {
     }
 
     // Comment out the rest of the args, no-op expects a single public parameter.
-		const args = this.marshalCircuitArg("90");
+    const args = this.marshalCircuitArg("90");
     //const args = [
     //  this.marshalCircuitArg(commitment), // should == what we are computing in the circuit
     //  {
@@ -820,16 +828,16 @@ export class ParticipantStack {
     if (!this.baselineCircuitArtifacts?.program) {
       // Recompiling artifacts for Alice. This is fixed in #299
       // ethereum-oasis/baseline/pull/299
-      // Once a circuit has been created, it has to be synced 
+      // Once a circuit has been created, it has to be synced
       // between all parties involved. This is an artifical "sync"
       await this.compileBaselineCircuit();
 
-			// In general, running another setup doesn't work since it
-			// will generate a new keypair. This can't be done in our cases
-			// since the verifier deployed by bob contains the genesis-
-			// generated VK. This means that if we want to submit our proof
-			// to the same verifier ( which is mandatory ), we will need the
-			// PK from Bob's setup. This is now sent through the invite.
+      // In general, running another setup doesn't work since it
+      // will generate a new keypair. This can't be done in our cases
+      // since the verifier deployed by bob contains the genesis-
+      // generated VK. This means that if we want to submit our proof
+      // to the same verifier ( which is mandatory ), we will need the
+      // PK from Bob's setup. This is now sent through the invite.
     }
 
     const proof = await this.zk?.generateProof(
@@ -978,12 +986,10 @@ export class ParticipantStack {
       return Promise.reject("failed to register workgroup organization");
     }
 
-    return (
-      Ident.clientFactory(
-        this.workgroupToken,
-        this.baselineConfig?.identApiScheme,
-        this.baselineConfig?.identApiHost
-      )
+    return Ident.clientFactory(
+      this.workgroupToken,
+      this.baselineConfig?.identApiScheme,
+      this.baselineConfig?.identApiHost
     ).createApplicationOrganization(this.workgroup.id, {
       organization_id: this.org.id,
     });
@@ -1047,9 +1053,7 @@ export class ParticipantStack {
 
   async fetchOrganization(address: string): Promise<Organization> {
     // fetchOrganization == On-chain registration.
-    await this.requireWorkgroupContract(
-      "organization-registry"
-    );
+    await this.requireWorkgroupContract("organization-registry");
 
     const resp = await this.g_retrieveOrganization(address)
       .then((org) => org)
@@ -1176,168 +1180,174 @@ export class ParticipantStack {
     return await vault.fetchVaultKeys(vlt.id!, {});
   }
 
-	async compileBaselineCircuit(): Promise<any> {
-		//baselineCircuitArtifacts
-		//-------------------------
-		//IZKSnarkCompilationArtifacts {
-		//	program: Uint8Array,
-		//	abi: string,
-		//} <++>
+  async compileBaselineCircuit(): Promise<any> {
+    //baselineCircuitArtifacts
+    //-------------------------
+    //IZKSnarkCompilationArtifacts {
+    //	program: Uint8Array,
+    //	abi: string,
+    //} <++>
 
-		const CHUNK_SIZE = 10000000;
-		const fs = require('fs');	
-		const abi = fs.readFileSync(`${baselineDocumentCircuitPath}/abi.json`).toString();
+    const CHUNK_SIZE = 10000000;
+    const fs = require("fs");
+    const abi = fs
+      .readFileSync(`${baselineDocumentCircuitPath}/abi.json`)
+      .toString();
 
-		let bufferCollecter = new Uint8Array();
+    let bufferCollecter = new Uint8Array();
 
-		for await (const chunk of generateChunks(`${baselineDocumentCircuitPath}/out`, CHUNK_SIZE)) {
-			let temp = new Uint8Array(chunk);
-			let z = new Uint8Array(bufferCollecter.length + temp.length);
-			z.set(bufferCollecter);
-			z.set(temp, bufferCollecter.length);
+    for await (const chunk of generateChunks(
+      `${baselineDocumentCircuitPath}/out`,
+      CHUNK_SIZE
+    )) {
+      let temp = new Uint8Array(chunk);
+      let z = new Uint8Array(bufferCollecter.length + temp.length);
+      z.set(bufferCollecter);
+      z.set(temp, bufferCollecter.length);
 
-			bufferCollecter = z;
-		}
+      bufferCollecter = z;
+    }
 
-		this.baselineCircuitArtifacts = {
-			program: bufferCollecter.slice(12, bufferCollecter.length),
-			abi: abi
-		};
+    this.baselineCircuitArtifacts = {
+      program: bufferCollecter.slice(12, bufferCollecter.length),
+      abi: abi,
+    };
 
-		return this.baselineCircuitArtifacts;
-	}
+    return this.baselineCircuitArtifacts;
+  }
 
-	async deployBaselineCircuit(): Promise<any> {
-		// compile the circuit...
-		if (!this.baselineCircuitArtifacts) {
-			await this.compileBaselineCircuit();
-		}
+  async deployBaselineCircuit(): Promise<any> {
+    // compile the circuit...
+    if (!this.baselineCircuitArtifacts) {
+      await this.compileBaselineCircuit();
+    }
 
-		// @TODO::Hamza -- Enable this again, for testing purposes
-		// we're using zokrates-CLI to pre-compile and generate everything.
+    // @TODO::Hamza -- Enable this again, for testing purposes
+    // we're using zokrates-CLI to pre-compile and generate everything.
 
-		// Perform trusted setup and deploy verifier/shield contract
-		//console.log(this.baselineCircuitArtifacts);
-		//const setupArtifacts: IZKSnarkTrustedSetupArtifacts =
-		//	await (async (): Promise<IZKSnarkTrustedSetupArtifacts> => {
-		//		const stateCapture = self;
-		//		self = (undefined as any);
-		//		const artifacts = await this.zk?.setup(this.baselineCircuitArtifacts);
-		//		self = stateCapture;
-		//		return artifacts!;
-		//	})();
+    // Perform trusted setup and deploy verifier/shield contract
+    //console.log(this.baselineCircuitArtifacts);
+    //const setupArtifacts: IZKSnarkTrustedSetupArtifacts =
+    //	await (async (): Promise<IZKSnarkTrustedSetupArtifacts> => {
+    //		const stateCapture = self;
+    //		self = (undefined as any);
+    //		const artifacts = await this.zk?.setup(this.baselineCircuitArtifacts);
+    //		self = stateCapture;
+    //		return artifacts!;
+    //	})();
 
+    const compilerOutput = JSON.parse(
+      solidityCompile(
+        JSON.stringify({
+          language: "Solidity",
+          sources: {
+            "verifier.sol": {
+              //content: setupArtifacts?.verifierSource
+              content: require("fs")
+                .readFileSync(`${baselineDocumentCircuitPath}/verifier.sol`)
+                .toString()
+                ?.replace(/\^0.6.1/g, "^0.7.3")
+                .replace(/view/g, ""),
+            },
+          },
+          settings: {
+            outputSelection: {
+              "*": {
+                "*": ["*"],
+              },
+            },
+          },
+        })
+      )
+    );
 
-		const compilerOutput = JSON.parse(
-			solidityCompile(
-				JSON.stringify({
-					language: "Solidity",
-					sources: {
-						"verifier.sol": {
-							//content: setupArtifacts?.verifierSource
-							content: require('fs').readFileSync(`${baselineDocumentCircuitPath}/verifier.sol`).toString()
-								?.replace(/\^0.6.1/g, "^0.7.3")
-								.replace(/view/g, ""),
-						},
-					},
-					settings: {
-						outputSelection: {
-							"*": {
-								"*": ["*"],
-							},
-						},
-					},
-				})
-			)
-		);
+    if (
+      !compilerOutput.contracts ||
+      !compilerOutput.contracts["verifier.sol"]
+    ) {
+      throw new Error("verifier contract compilation failed");
+    }
 
-		if (
-			!compilerOutput.contracts ||
-			!compilerOutput.contracts["verifier.sol"]
-		) {
-			throw new Error("verifier contract compilation failed");
-		}
+    const contractByte =
+      "0x" +
+      compilerOutput.contracts["verifier.sol"]["Verifier"]["evm"]["bytecode"][
+        "object"
+      ];
 
-		const contractByte =
-			"0x" +
-			compilerOutput.contracts["verifier.sol"]["Verifier"]["evm"]["bytecode"][
-			"object"
-			];
+    const shieldContract = JSON.parse(
+      readFileSync("../../bri-2/contracts/artifacts/Shield.json").toString()
+    ); // #2
 
-		const shieldContract = JSON.parse(
-			readFileSync("../../bri-2/contracts/artifacts/Shield.json").toString()
-		); // #2
+    // Begin Verifier Contract
+    const verifierAddress = await this.contractService.compileContracts([
+      {
+        byteCode: contractByte,
+      },
+    ]);
 
-		// Begin Verifier Contract
-		const verifierAddress = await this.contractService.compileContracts([
-			{
-				byteCode: contractByte,
-			},
-		]);
+    console.log("Verifier " + verifierAddress);
 
-		console.log("Verifier " + verifierAddress);
+    const shieldAddress = await this.contractService.compileContracts([
+      {
+        byteCode: shieldContract.bytecode,
+        params: [
+          {
+            parType: "address",
+            parValue: verifierAddress[0],
+          },
+          {
+            parType: "uint",
+            parValue: 2,
+          },
+        ],
+      },
+    ]);
 
-		const shieldAddress = await this.contractService.compileContracts([
-			{
-				byteCode: shieldContract.bytecode,
-				params: [
-					{
-						parType: "address",
-						parValue: verifierAddress[0],
-					},
-					{
-						parType: "uint",
-						parValue: 2,
-					},
-				],
-			},
-		]);
+    console.log("Shield " + shieldAddress);
 
-		console.log("Shield " + shieldAddress);
+    const trackedShield = await this.requestMgr(Mgr.Bob, "baseline_track", [
+      shieldAddress[0],
+    ])
+      .then((res: any) => res)
+      .catch(() => undefined);
 
-		const trackedShield = await this.requestMgr(Mgr.Bob, "baseline_track", [
-			shieldAddress[0],
-		])
-			.then((res: any) => res)
-			.catch(() => undefined);
+    if (!trackedShield) {
+      console.log("WARNING: failed to track baseline shield contract");
+    } else {
+      console.log(
+        `${this.org?.name} tracking shield under the address: ${shieldAddress}`
+      );
+    }
 
-		if (!trackedShield) {
-			console.log("WARNING: failed to track baseline shield contract");
-		} else {
-			console.log(
-				`${this.org?.name} tracking shield under the address: ${shieldAddress}`
-			);
-		}
+    this.contracts = this.ganacheContracts = {
+      ...this.ganacheContracts,
+      ...{
+        shield: {
+          address: shieldAddress[0],
+          name: "Shield",
+          network_id: 0,
+          params: {
+            compiled_artifacts: shieldContract,
+          },
+          type: "shield",
+        },
+        verifier: {
+          address: verifierAddress[0],
+          name: "Verifier",
+          network_id: 0,
+          params: {
+            compiled_artifacts:
+              compilerOutput.contracts["verifier.sol"]["Verifier"]["evm"],
+          },
+          type: "verifier",
+        },
+      },
+    };
 
-		this.contracts = this.ganacheContracts = {
-			...this.ganacheContracts,
-			...{
-				shield: {
-					address: shieldAddress[0],
-					name: "Shield",
-					network_id: 0,
-					params: {
-						compiled_artifacts: shieldContract,
-					},
-					type: "shield",
-				},
-				verifier: {
-					address: verifierAddress[0],
-					name: "Verifier",
-					network_id: 0,
-					params: {
-						compiled_artifacts:
-							compilerOutput.contracts["verifier.sol"]["Verifier"]["evm"],
-					},
-					type: "verifier",
-				},
-			},
-		};
+    //this.baselineCircuitSetupArtifacts = setupArtifacts;
+    this.workflowIdentifier = uuid4(); //this.baselineCircuitSetupArtifacts?.identifier;
 
-		//this.baselineCircuitSetupArtifacts = setupArtifacts;
-		this.workflowIdentifier = uuid4();//this.baselineCircuitSetupArtifacts?.identifier;
-
-		return Promise.resolve();
+    return Promise.resolve();
   }
 
   async getTracked(): Promise<any> {
@@ -1453,7 +1463,7 @@ export class ParticipantStack {
       local_invitor: bobOrg,
     });
 
-		// @TODO::Hamza -- Streamline this; looks messy.
+    // @TODO::Hamza -- Streamline this; looks messy.
     // We now have to decode and encode the token once again to replace the values.
     // It's either that or construct a brand new token. But since there might be
     // values we still need; i'm opting for the former. Ident cross-references all
@@ -1466,7 +1476,11 @@ export class ParticipantStack {
     // Decode invite and reconstruct
     let decodedInvite = jwt.decode(inviteToken) as { [key: string]: any };
 
-		console.log(require('fs').readFileSync(`${baselineDocumentSource}/stateVerifier.zok`).toString());
+    console.log(
+      require("fs")
+        .readFileSync(`${baselineDocumentSource}/stateVerifier.zok`)
+        .toString()
+    );
 
     decodedInvite.prvd.data.params = {
       erc1820_registry_contract_address: this.ganacheContracts[
@@ -1480,22 +1494,24 @@ export class ParticipantStack {
       shield_contract_address: this.ganacheContracts["shield"].address,
       verifier_contract_address: this.ganacheContracts["verifier"].address,
       workflow_identifier: this.workflowIdentifier,
-			zk_data:  {
-				// @TODO::Hamza Exchange proving key!
-				zkSource: require('fs').readFileSync(`${baselineDocumentSource}/stateVerifier.zok`) || "0x0"
-			}
-		};
+      zk_data: {
+        // @TODO::Hamza Exchange proving key!
+        zkSource:
+          require("fs").readFileSync(
+            `${baselineDocumentSource}/stateVerifier.zok`
+          ) || "0x0",
+      },
+    };
 
-		console.log("Pre token signing");
+    console.log("Pre token signing");
 
     // Time to sign the reconstructed object
-		const token = jwt.sign(decodedInvite, "0x0");
+    const token = jwt.sign(decodedInvite, "0x0");
 
-		console.log(`Post token signing: \n ${token}`);
+    console.log(`Post token signing: \n ${token}`);
 
-		return Promise.resolve(token);
+    return Promise.resolve(token);
   }
-
 
   private async requireCapabilities(): Promise<void> {
     let interval;
@@ -1681,7 +1697,8 @@ export class ParticipantStack {
         (await this.fetchKeys())[2].address,
         this.org.messaging_endpoint,
         this.natsBearerTokens[this.org.messaging_endpoint] || "0x",
-        this.babyJubJub?.publicKey!); 
+        this.babyJubJub?.publicKey!
+      );
 
       await this.registerWorkgroupOrganization();
     }
@@ -1807,7 +1824,7 @@ export class ParticipantStack {
 
     const subscription = await this.nats?.subscribe(
       baselineProtocolMessageSubject,
-      (msg, ) => {
+      (msg) => {
         this.protocolMessagesRx++;
         this.dispatchProtocolMessage(
           unmarshalProtocolMessage(Buffer.from(msg.data))

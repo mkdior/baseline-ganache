@@ -20,7 +20,7 @@ export let fileReader = async (
         fileContents: fileContents,
       } as Contents);
     }
-  } catch (err: any) {
+  } catch (err) {
     console.log(
       `Error while reading file under the name: ${fileName}. \n Error: ${err}`
     );
