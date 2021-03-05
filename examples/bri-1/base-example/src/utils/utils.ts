@@ -111,7 +111,8 @@ const odometer_increment = (odometer: any, array_of_arrays: any): any => {
 
 //Helper functies to handle bignumbers
 export const bnToBuf = (bn: any): Uint8Array => {
-  var hex = BigInt(bn).toString(16);
+	const bigInt = require("big-integer");
+  var hex = bigInt(bn).toString(16);
   if (hex.length % 2) {
     hex = "0" + hex;
   }
@@ -136,4 +137,4 @@ export const bnToBuf = (bn: any): Uint8Array => {
   } else var testa = u8;
 
   return testa;
-}
+};
