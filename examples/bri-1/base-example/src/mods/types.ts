@@ -68,4 +68,33 @@ export type SupplierPreferenceData = {
     supplierReputation: number;
     supplierType: SupplierType;
   };
+}
+
+export interface CommitmentMetaData {
+  shieldAddr: string;
+  verifierAddr: string;
+  state: bigint;
+}
+
+export interface VerifierInterface {
+	mjID: number;
+	state: bigint;
+	supplierID: bigint;
+	docHash1: bigint;
+	docHash2: bigint;
+	contractH1: bigint;
+	contractH2: bigint;
+	lc1: bigint;
+	lc2: bigint;
+	nc1: bigint;
+	nc2: bigint;
+}
+
+export interface SuppContainer {
+	id: number;
+	supplierID: bigint;
+	docHash1: bigint;
+	docHash2: bigint;
+	contractH1: bigint;
+	contractH2: bigint;
 };

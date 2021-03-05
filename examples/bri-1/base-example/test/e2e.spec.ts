@@ -257,7 +257,7 @@ describe("baseline", () => {
 			describe("workflow", () => {
 				describe("workstep", () => {
 					// For testing purposes we've condensed our current workflow in this single workstep.
-					let maintenanceData;
+					let maintenanceData: modTypes.Job[];
 
 					before(async () => {});
 
@@ -267,7 +267,7 @@ describe("baseline", () => {
 					});
 
 					it("should generate a genesis commitment based on all current maintenance data", async () => {
-
+						 
 					});
 
 				});

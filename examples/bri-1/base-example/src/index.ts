@@ -65,15 +65,19 @@ import {
   readBytes,
   generateChunks,
 } from "../test/utils";
+import { bnToBuf } from "./utils/utils";
+
 import { ContractMgr, Mgr } from "../test/utils-ganache";
+import { CommitmentMetaData, VerifierInterface, SuppContainer, Job } from "../src/mods/types";
 
 const baselineProtocolMessageSubject = "baseline.inbound";
 
 const baselineDocumentSource = "./src/zkp/src";
-const baselineDocumentSourceAlt = "./src/zkp/src";
 const baselineDocumentCircuitPath = "./src/zkp/artifacts/stateVerifierSHA";
-const baselineDocumentCircuitPathAlt = "./src/zkp/artifacts/stateVerifierPED";
-// proving.key // verification.key
+
+// These are currently not being directly due to the size of the pkey
+// proving.key 
+// verification.key
 const baselineKeys = "./src/zkp/artifacts/stateVerifierSHA/keys";
 
 const zokratesImportResolver = (_: any, path: any) => {
@@ -853,6 +857,174 @@ export class ParticipantStack {
       salt: salt,
     };
   }
+
+createCommitment(
+  mjCont: Job,
+  meta: CommitmentMetaData,
+  leafIndexLC?: number,
+  supCont?: SuppContainer
+) {
+
+	// Wrapper for around big-int since we can't compile to es2020
+	// without losing the ability to use.?this.
+	const bigInt = require("big-integer");
+	const sha = require("sha.js");
+
+  let mkLC: {lc1: bigint; lc2: bigint;} = {
+    lc1: bigInt(0),
+    lc2: bigInt(0),
+  };
+
+  let state = meta.state;
+
+  if (!leafIndexLC) leafIndexLC = 0;
+  if (!supCont)
+    supCont = {
+      id: 0,
+      supplierID: bigInt(0),
+      docHash1: bigInt(0),
+      docHash2: bigInt(0),
+      contractH1: bigInt(0),
+      contractH2: bigInt(0),
+    } as SuppContainer;
+
+  if (state == bigInt(1)) {
+    mkLC.lc1 = bigInt(0);
+    mkLC.lc2 = bigInt(0);
+  } else {
+    //mkLC.lc1 = ethers.getCommit(meta.shieldAddr, leafIndexLC)[0]; //dit klopt nog niet maar komt in de buurt
+    //mkLC.lc2 = ethers.getCommit(meta.shieldAddr, leafIndexLC)[1]; //dit klopt nog niet maar komt in de buurt. Ook moet wss de commitment string gesplitst worden voordat mkLC ingevoerd wordt.
+  }
+
+  if (state == bigInt(1) || state == bigInt(2) || state == bigInt(5)) {
+    supCont.supplierID = state;
+    supCont.docHash1 = state;
+    supCont.docHash2 = state;
+    supCont.contractH1 = state;
+    supCont.contractH2 = state;
+  }
+
+  let a: bigint = bigInt(0);
+  let b: bigint = bigInt(0);
+  let c: bigint = bigInt(0);
+  let d: bigint = bigInt(0);
+  let e: bigint = bigInt(0);
+  let f: bigint = bigInt(0);
+  let g: bigint = bigInt(0);
+  let h: bigint = bigInt(0);
+  let k: bigint = bigInt(0);
+
+  if (state == bigInt(1) || state == bigInt(2) || state == bigInt(5)) {
+    a = bigInt(0);
+  } else {
+    a = bigInt(1);
+  }
+
+  b = a * supCont.contractH1;
+  c = a * supCont.contractH2;
+  d = a * supCont.supplierID;
+  e = a * supCont.docHash1;
+  f = a * supCont.docHash2;
+
+  if (state == bigInt(3) || state == bigInt(4)) {
+    g = bigInt(1);
+  } else {
+    g = bigInt(0);
+  }
+
+  h = g * supCont.contractH1;
+  k = g * supCont.contractH2;
+
+  // Initiate body of inputs for verfier.sol
+  let verifierInp: VerifierInterface = {
+    mjID: mjCont.id,
+    state: state,
+    supplierID: supCont.supplierID,
+    docHash1: supCont.docHash1,
+    docHash2: supCont.docHash2,
+    contractH1: supCont.contractH1,
+    contractH2: supCont.contractH2,
+    lc1: mkLC.lc1,
+    lc2: mkLC.lc2,
+    nc1: bigInt(0),
+    nc2: bigInt(0),
+  };
+
+  // Create body as input for the hashing and commitment generation
+  let comBod: VerifierInterface = {
+    mjID: verifierInp.mjID,
+    state: verifierInp.state,
+    supplierID: d,
+    docHash1: e,
+    docHash2: f,
+    contractH1: h,
+    contractH2: k,
+    lc1: verifierInp.lc1,
+    lc2: verifierInp.lc2,
+    nc1: bigInt(0),
+    nc2: bigInt(0),
+  };
+
+  ///// CALCULATE HASH1 ////////
+  let in1 = bnToBuf("" + comBod.state); //create uint8array of state
+  let in2 = bnToBuf("" + comBod.mjID); //create uint8array of MJ-ID
+  let in3 = bnToBuf("" + comBod.supplierID); //create uint8array of supplierID
+  let in4 = bnToBuf("" + comBod.lc1); //create unint8array of 1st part of latest commitment
+
+  let inp14 = new Uint8Array([...in1, ...in2, ...in3, ...in4]);
+  let hash1 = new sha.sha256().update(inp14).digest("hex"); //create hex hash1 of commitment
+  let left1 = bigInt("0x" + hash1.slice(0, 32)); //create BigInt part of hash1
+  let right1 = bigInt("0x" + hash1.slice(32, 64)); //create BigInt part of hash1
+
+  ///// CALCULATE HASH2 ////////
+  let in5 = bnToBuf("" + comBod.docHash1); //create uint8array of DocHash1
+  let in6 = bnToBuf("" + comBod.docHash2); //create uint8array of DocHash2
+  let in7 = bnToBuf("" + comBod.contractH1); //create uint8array of ContractHash1
+  let in8 = bnToBuf("" + comBod.lc2); //create unint8array of 2nd part of latest commitment
+
+  let inp58 = new Uint8Array([...in5, ...in6, ...in7, ...in8]);
+  let hash2 = new sha.sha256().update(inp58).digest("hex"); //create hex hash2 of commitment
+  let left2 = bigInt("0x" + hash2.slice(0, 32)); //create BigInt part of hash2
+  let right2 = bigInt("0x" + hash2.slice(32, 64)); //create BigInt part of hash2
+
+  //// CALCULATE COMMITMENT HASH /////
+  let comar1 = bnToBuf("" + left1);
+  let comar2 = bnToBuf("" + right1);
+  let comar3 = bnToBuf("" + left2);
+  let comar4 = bnToBuf("" + right2);
+  let comarr = new Uint8Array([...comar1, ...comar2, ...comar3, ...comar4]);
+  let hexhash = new sha.sha256().update(comarr).digest("hex");
+  let newcom1 = bigInt("0x" + hexhash.slice(0, 32));
+  let newcom2 = bigInt("0x" + hexhash.slice(32, 64));
+
+  comBod.nc1 = newcom1;
+  comBod.nc2 = newcom2;
+  verifierInp.nc1 = newcom1;
+  verifierInp.nc2 = newcom2;
+
+  return verifierInp; //contains all the right inputs for proof generation for verifier.sol, including the newly generated commitment.
+}
+
+checkCommitment(mjContforCom: Job, supCont: SuppContainer, meta: CommitmentMetaData, leafIndexLC: any) {
+  //Check if latest commitment in tree is correctly build from info and previous commitment
+  //First createCommitment based on same information the latest commitment is build from
+	const bigInt = require("big-integer");
+
+  let verifierInp = this.createCommitment(mjContforCom, meta, leafIndexLC - 1, supCont);
+  let mkLC: {lc1: bigint; lc2: bigint;} = { lc1: bigInt(0), lc2: bigInt(0) };
+  //Get latest commitments from MT:
+//  mkLC.lc1 = ethers.getCommit(meta.shieldAddr, leafIndexLC)[0]; //dit klopt nog niet maar komt in de buurt I guess. Depends in wat voor format we de latest commitments terug krijgen.
+//  mkLC.lc2 = ethers.getCommit(meta.shieldAddr, leafIndexLC)[1];
+//
+  //Compare results
+  let goodCom = false;
+  if (mkLC.lc1 == verifierInp.nc1 && mkLC.lc2 == verifierInp.nc2) {
+    goodCom = true;
+  }
+
+  return goodCom;
+}
+
 
   async resolveMessagingEndpoint(addr: string): Promise<string> {
     const org = await this.fetchOrganization(addr);

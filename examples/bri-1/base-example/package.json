@@ -28,6 +28,7 @@
     "@ethersproject/experimental": "5.0.8",
     "@types/mongoose": "^5.9.25",
     "@types/supertest": "^2.0.10",
+    "big-integer": "^1.6.48",
     "buffer-split": "^1.0.0",
     "dotenv": "^8.2.0",
     "ethers": "^5.0.14",
@@ -37,6 +38,7 @@
     "loglevel": "^1.6.8",
     "mongoose": "^5.10.7",
     "provide-js": "^1.5.8",
+    "sha.js": "^2.4.11",
     "solc": "^0.7.0",
     "zokrates-js": "file:tars/zokrates-js-1.0.28.tar"
   },

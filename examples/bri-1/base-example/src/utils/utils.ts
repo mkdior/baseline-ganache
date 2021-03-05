@@ -108,3 +108,32 @@ const odometer_increment = (odometer: any, array_of_arrays: any): any => {
     }
   } /* for( let odometer_digit = odometer.length-1; odometer_digit >=0; odometer_digit-- ) */
 }; /* odometer_increment() */
+
+//Helper functies to handle bignumbers
+export const bnToBuf = (bn: any): Uint8Array => {
+  var hex = BigInt(bn).toString(16);
+  if (hex.length % 2) {
+    hex = "0" + hex;
+  }
+
+  var len = hex.length / 2; //of 16
+  var u8 = new Uint8Array(len); //zoals hier
+
+  var i = 0;
+  var j = 0;
+  while (i < len) {
+    u8[i] = parseInt(hex.slice(j, j + 2), 16);
+    i += 1;
+    j += 2;
+  }
+
+  //when input is single/small value/smallerthan128bit fill unit8array with zeros and paste input at the end of array
+  if (bn.length <= 32) {
+    var testa = new Uint8Array(16).fill(0);
+    for (let i = 0; i < u8.length; i++) {
+      testa[15 - i] = u8[u8.length - i - 1];
+    }
+  } else var testa = u8;
+
+  return testa;
+}
