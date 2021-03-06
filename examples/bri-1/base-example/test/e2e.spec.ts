@@ -22,6 +22,7 @@ import {
 import { 
 	Job,
 	Priority,
+	VerifierInterface,
 	CommitmentMetaData
 } from "../src/mods/types";
 
@@ -263,7 +264,8 @@ describe("baseline", () => {
           // For testing purposes we've condensed our current workflow in this single workstep.
 					const bigInt = require("big-integer");
 
-          let maintenanceData: Job[];
+          let maintenanceData: Job[] = [];
+					let commitments: VerifierInterface[] = [];
 					let verifierAddress: string;
 					let shieldAddress: string;
 
@@ -289,10 +291,16 @@ describe("baseline", () => {
 							state: bigInt(0)
 						}; 
 						const commitment = bobApp.createCommitment(job, commitmentMeta)
-
+						console.log(JSON.stringify(job, undefined, 2), JSON.stringify(commitmentMeta, undefined, 2));
 						console.log(JSON.stringify(commitment, undefined, 2));
-
+						commitments.push(commitment);
 						assert(commitment);
+					});
+
+					it("should push the commitment to the merkle tree", async () => {	 
+						  // baseline_verifyAndPush => params => senderAddress, contractAddress, proof, publicInputs, newCommitment
+  						//async requestMgr(endpoint: Mgr, method: string, params: any): Promise<any> {
+						assert(true)
 					});
         });
       });

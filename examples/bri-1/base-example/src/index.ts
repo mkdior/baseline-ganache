@@ -690,11 +690,12 @@ export class ParticipantStack {
     // @TODO::Hamza Remove this once #299 has been merged
     //this.baselineCircuitSetupArtifacts = invite.prvd.data.params.zk_data;
 
+		console.log(`Trying to track shield from Alice under address: ${shieldAddr}`);
     const trackedShield = await this.requestMgr(Mgr.Alice, "baseline_track", [
       shieldAddr,
     ])
-      .then((res: any) => res)
-      .catch(() => undefined);
+      .then((res: any) => {console.log(`Tracked shield address, result: ${res}`); return res;})
+      .catch((err: any) => {console.log(`Error while trying to track shield contract. \n Error details: ${err}`); return undefined;});
 
     if (!trackedShield) {
       console.log("WARNING: failed to track baseline shield contract");
@@ -868,7 +869,7 @@ export class ParticipantStack {
     meta: CommitmentMetaData,
     leafIndexLC?: number,
     supCont?: SuppContainer
-  ) {
+  ): VerifierInterface {
     // Wrapper for around big-int since we can't compile to es2020
     // without losing the ability to use.?this.
     const bigInt = require("big-integer");
@@ -978,8 +979,8 @@ export class ParticipantStack {
     let inp14 = new Uint8Array([...in1, ...in2, ...in3, ...in4]);
     let hash1 = new sha.sha256().update(inp14).digest("hex"); //create hex hash1 of commitment
 		console.log(hash1.slice(0, 32), hash1.slice(32, 64));
-    let left1 = bigInt(""+hash1.slice(0, 32), 16); //create BigInt part of hash1
-    let right1 = bigInt(""+hash1.slice(32, 64), 16); //create BigInt part of hash1
+    let left1 = bigInt(hash1.slice(0, 32), 16).value; //create BigInt part of hash1
+    let right1 = bigInt(hash1.slice(32, 64), 16).value; //create BigInt part of hash1
 
     ///// CALCULATE HASH2 ////////
     let in5 = bnToBuf("" + comBod.docHash1); //create uint8array of DocHash1
@@ -990,8 +991,8 @@ export class ParticipantStack {
     let inp58 = new Uint8Array([...in5, ...in6, ...in7, ...in8]);
     let hash2 = new sha.sha256().update(inp58).digest("hex"); //create hex hash2 of commitment
 		console.log(hash2.slice(0, 32), hash2.slice(32, 64));
-    let left2 = bigInt(""+hash2.slice(0, 32), 16); //create BigInt part of hash2
-    let right2 = bigInt(""+hash2.slice(32, 64), 16); //create BigInt part of hash2
+    let left2 = bigInt(hash2.slice(0, 32), 16).value; //create BigInt part of hash2
+    let right2 = bigInt(hash2.slice(32, 64), 16).value; //create BigInt part of hash2
 
     //// CALCULATE COMMITMENT HASH /////
     let comar1 = bnToBuf("" + left1);
@@ -1001,8 +1002,8 @@ export class ParticipantStack {
     let comarr = new Uint8Array([...comar1, ...comar2, ...comar3, ...comar4]);
     let hexhash = new sha.sha256().update(comarr).digest("hex");
 		console.log(hexhash.slice(0, 32), hexhash.slice(32, 64));
-    let newcom1 = bigInt(""+hexhash.slice(0, 32), 16);
-    let newcom2 = bigInt(""+hexhash.slice(32, 64), 16);
+    let newcom1 = bigInt(hexhash.slice(0, 32), 16).value;
+    let newcom2 = bigInt(hexhash.slice(32, 64), 16).value;
 
     comBod.nc1 = newcom1;
     comBod.nc2 = newcom2;
