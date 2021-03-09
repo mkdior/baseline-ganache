@@ -836,15 +836,9 @@ export class ParticipantStack {
       `${baselineDocumentCircuitPath}/keys/proving.key`
     );
 
-    console.log("Witness");
-    console.log(witness);
-    console.log("Proving Key");
-    console.log(pk);
-
-    console.log("Program");
-    console.log(this.baselineCircuitArtifacts?.program);
-
     const proof = (async (program: any, witness: any, pk: any) => {
+			// Blank self out; if you don't do this Zokrates will error out.
+			// Make sure to restore self once the call to Zokrates is done.
       const stateCapture = self;
       self = undefined as any;
       let proof = await this.zk?.generateProof(program, witness, pk);
