@@ -19,11 +19,11 @@ import {
 
 // @TODO::Hamza, create a single file containing all exports for these mods
 // Section related to the WF PoC
-import { 
-	Job,
-	Priority,
-	VerifierInterface,
-	CommitmentMetaData
+import {
+  Job,
+  Priority,
+  VerifierInterface,
+  CommitmentMetaData,
 } from "../src/mods/types";
 
 import { retrieveJobs } from "../src/mods/extract/extract";
@@ -262,17 +262,21 @@ describe("baseline", () => {
       describe("workflow", () => {
         describe("workstep", () => {
           // For testing purposes we've condensed our current workflow in this single workstep.
-					const bigInt = require("big-integer");
+          const bigInt = require("big-integer");
 
           let maintenanceData: Job[] = [];
-					let commitments: VerifierInterface[] = [];
-					let verifierAddress: string;
-					let shieldAddress: string;
+          let commitments: VerifierInterface[] = [];
+          let proofs: any[] = [];
+          let verifierAddress: string;
+          let shieldAddress: string;
 
           before(async () => {
-						verifierAddress = (await bobApp.requireWorkgroupContract("verifier")).address;
-						shieldAddress = (await bobApp.requireWorkgroupContract("shield")).address;
-					});
+            verifierAddress = (
+              await bobApp.requireWorkgroupContract("verifier")
+            ).address;
+            shieldAddress = (await bobApp.requireWorkgroupContract("shield"))
+              .address;
+          });
 
           it("should extract all currently available maintenance jobs from some arbitrary data-source", async () => {
             maintenanceData = await retrieveJobs(
@@ -283,25 +287,47 @@ describe("baseline", () => {
           });
 
           it("should generate a genesis commitment based on all current maintenance data", async () => {
-						// Grab the first job from the priority list:
-						const job = maintenanceData[0];
-						const commitmentMeta: CommitmentMetaData = {
-							shieldAddr: shieldAddress,
-							verifierAddr: verifierAddress,
-							state: bigInt(0)
-						}; 
-						const commitment = bobApp.createCommitment(job, commitmentMeta)
-						console.log(JSON.stringify(job, undefined, 2), JSON.stringify(commitmentMeta, undefined, 2));
-						console.log(JSON.stringify(commitment, undefined, 2));
-						commitments.push(commitment);
-						assert(commitment);
-					});
+            // Grab the first job from the priority list:
+            const job = maintenanceData[0];
+            const commitmentMeta: CommitmentMetaData = {
+              shieldAddr: shieldAddress,
+              verifierAddr: verifierAddress,
+              state: bigInt(0),
+            };
+            const commitment = bobApp.createCommitment(job, commitmentMeta);
+            commitments.push(commitment);
+            assert(commitment);
+          });
 
-					it("should push the commitment to the merkle tree", async () => {	 
-						  // baseline_verifyAndPush => params => senderAddress, contractAddress, proof, publicInputs, newCommitment
-  						//async requestMgr(endpoint: Mgr, method: string, params: any): Promise<any> {
-						assert(true)
-					});
+          it("should calculate a witness and generate a proof", async () => {
+            const currentCommitment = commitments[0];
+            const inputs = [
+              currentCommitment?.state.toString(),
+              currentCommitment?.mjID.toString(),
+              currentCommitment?.supplierID.toString(),
+              "0",
+              "0",
+              "0",
+              "0",
+              "0",
+              "0",
+              currentCommitment?.nc1.toString(),
+              currentCommitment?.nc2.toString(),
+            ];
+
+            const proof = await bobApp.generateProof("genesis", {
+              args: inputs,
+            });
+
+            proofs.push(proof);
+            assert(proof);
+          });
+
+          it("should push the commitment to the merkle tree", async () => {
+            // baseline_verifyAndPush => params => senderAddress, contractAddress, proof, publicInputs, newCommitment
+            //async requestMgr(endpoint: Mgr, method: string, params: any): Promise<any> {
+            assert(true);
+          });
         });
       });
     });

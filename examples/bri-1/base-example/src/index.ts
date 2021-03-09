@@ -690,12 +690,22 @@ export class ParticipantStack {
     // @TODO::Hamza Remove this once #299 has been merged
     //this.baselineCircuitSetupArtifacts = invite.prvd.data.params.zk_data;
 
-		console.log(`Trying to track shield from Alice under address: ${shieldAddr}`);
+    console.log(
+      `Trying to track shield from Alice under address: ${shieldAddr}`
+    );
     const trackedShield = await this.requestMgr(Mgr.Alice, "baseline_track", [
       shieldAddr,
     ])
-      .then((res: any) => {console.log(`Tracked shield address, result: ${res}`); return res;})
-      .catch((err: any) => {console.log(`Error while trying to track shield contract. \n Error details: ${err}`); return undefined;});
+      .then((res: any) => {
+        console.log(`Tracked shield address, result: ${res}`);
+        return res;
+      })
+      .catch((err: any) => {
+        console.log(
+          `Error while trying to track shield contract. \n Error details: ${err}`
+        );
+        return undefined;
+      });
 
     if (!trackedShield) {
       console.log("WARNING: failed to track baseline shield contract");
@@ -765,73 +775,33 @@ export class ParticipantStack {
 
   async generateProof(type: string, msg: any): Promise<any> {
     const senderZkPublicKey = this.babyJubJub?.publicKey!;
-    let commitment: string;
-    let root: string | null = null;
     const salt = msg.salt || rndHex(32);
+
+    let root: string | null = null;
+    let args: any[] = [];
+
     if (msg.sibling_path && msg.sibling_path.length > 0) {
       const siblingPath = elementify(msg.sibling_path) as Element;
       root = siblingPath[0].hex(64);
     }
 
     console.log(`generating ${type} proof...\n`, msg);
+    // @@TODO 703: Check use for senderZkpPublicKey.
+    // Check implementation for sibling path.
+    // Check use for salt.
+    // Check marshalling implementation.
+    // Check use for commitment at this point.
 
     switch (type) {
-      case "preimage": // create agreement
-        const preimage = concatenateThenHash({
-          erc20ContractAddress: this.marshalCircuitArg(
-            this.contracts["erc1820-registry"].address
-          ),
-          senderPublicKey: this.marshalCircuitArg(senderZkPublicKey),
-          name: this.marshalCircuitArg(msg.doc.name),
-          url: this.marshalCircuitArg(msg.doc.url),
-          hash: this.marshalCircuitArg(msg.hash),
-        });
-        console.log(
-          `generating state genesis with preimage: ${preimage}; salt: ${salt}`
-        );
-        commitment = concatenateThenHash(preimage, salt);
+      case "genesis":
+        args = msg.args;
         break;
-
-      case "modify_state": // modify commitment state, nullify if applicable, etc.
-        const _commitment = concatenateThenHash({
-          senderPublicKey: this.marshalCircuitArg(senderZkPublicKey),
-          name: this.marshalCircuitArg(msg.doc.name),
-          url: this.marshalCircuitArg(msg.doc.url),
-          hash: this.marshalCircuitArg(msg.hash),
-        });
-        console.log(
-          `generating state transition commitment with calculated delta: ${_commitment}; root: ${root}, salt: ${salt}`
-        );
-        commitment = concatenateThenHash(root, _commitment, salt);
+      case "modify_state":
         break;
 
       default:
         throw new Error("invalid proof type");
     }
-
-    // Comment out the rest of the args, no-op expects a single public parameter.
-    const args = this.marshalCircuitArg("90");
-    //const args = [
-    //  this.marshalCircuitArg(commitment), // should == what we are computing in the circuit
-    //  {
-    //    value: [
-    //      this.marshalCircuitArg(commitment.substring(0, 16)),
-    //      this.marshalCircuitArg(commitment.substring(16)),
-    //    ],
-    //    salt: [
-    //      this.marshalCircuitArg(salt.substring(0, 16)),
-    //      this.marshalCircuitArg(salt.substring(16)),
-    //    ],
-    //  },
-    //  {
-    //    senderPublicKey: [
-    //      this.marshalCircuitArg(senderZkPublicKey.substring(0, 16)),
-    //      this.marshalCircuitArg(senderZkPublicKey.substring(16)),
-    //    ],
-    //    agreementName: this.marshalCircuitArg(msg.doc.name),
-    //    agreementUrl: this.marshalCircuitArg(msg.doc.url),
-    //  },
-    //];
 
     //@TODO:: Check why we're in here as Alice from the get-go.
     //@F001
@@ -850,17 +820,40 @@ export class ParticipantStack {
       // PK from Bob's setup. This is now sent through the invite.
     }
 
-    const proof = await this.zk?.generateProof(
-      this.baselineCircuitArtifacts?.program,
-      (await this.zk?.computeWitness(this.baselineCircuitArtifacts!, args))
-        .witness,
-      this.baselineCircuitSetupArtifacts?.keypair?.pk
+    //const proof = await this.zk?.generateProof(
+    //  this.baselineCircuitArtifacts?.program,
+    //  (await this.zk?.computeWitness(this.baselineCircuitArtifacts!, args))
+    //    .witness,
+    //  this.baselineCircuitSetupArtifacts?.keypair?.pk
+    //);
+
+    const fs = require("fs");
+    const witness = (await this.zk?.computeWitness(
+      this.baselineCircuitArtifacts!,
+      args
+    ))!.witness;
+    const pk = fs.readFileSync(
+      `${baselineDocumentCircuitPath}/keys/proving.key`
     );
 
+    console.log("Witness");
+    console.log(witness);
+    console.log("Proving Key");
+    console.log(pk);
+
+    console.log("Program");
+    console.log(this.baselineCircuitArtifacts?.program);
+
+    const proof = (async (program: any, witness: any, pk: any) => {
+      const stateCapture = self;
+      self = undefined as any;
+      let proof = await this.zk?.generateProof(program, witness, pk);
+      self = stateCapture;
+      return proof;
+    })(this.baselineCircuitArtifacts?.program, witness, pk);
+
     return {
-      doc: msg.doc,
       proof: proof,
-      salt: salt,
     };
   }
 
@@ -978,7 +971,7 @@ export class ParticipantStack {
 
     let inp14 = new Uint8Array([...in1, ...in2, ...in3, ...in4]);
     let hash1 = new sha.sha256().update(inp14).digest("hex"); //create hex hash1 of commitment
-		console.log(hash1.slice(0, 32), hash1.slice(32, 64));
+    console.log(hash1.slice(0, 32), hash1.slice(32, 64));
     let left1 = bigInt(hash1.slice(0, 32), 16).value; //create BigInt part of hash1
     let right1 = bigInt(hash1.slice(32, 64), 16).value; //create BigInt part of hash1
 
@@ -990,7 +983,7 @@ export class ParticipantStack {
 
     let inp58 = new Uint8Array([...in5, ...in6, ...in7, ...in8]);
     let hash2 = new sha.sha256().update(inp58).digest("hex"); //create hex hash2 of commitment
-		console.log(hash2.slice(0, 32), hash2.slice(32, 64));
+    console.log(hash2.slice(0, 32), hash2.slice(32, 64));
     let left2 = bigInt(hash2.slice(0, 32), 16).value; //create BigInt part of hash2
     let right2 = bigInt(hash2.slice(32, 64), 16).value; //create BigInt part of hash2
 
@@ -1001,7 +994,7 @@ export class ParticipantStack {
     let comar4 = bnToBuf("" + right2);
     let comarr = new Uint8Array([...comar1, ...comar2, ...comar3, ...comar4]);
     let hexhash = new sha.sha256().update(comarr).digest("hex");
-		console.log(hexhash.slice(0, 32), hexhash.slice(32, 64));
+    console.log(hexhash.slice(0, 32), hexhash.slice(32, 64));
     let newcom1 = bigInt(hexhash.slice(0, 32), 16).value;
     let newcom2 = bigInt(hexhash.slice(32, 64), 16).value;
 
@@ -1370,13 +1363,6 @@ export class ParticipantStack {
   }
 
   async compileBaselineCircuit(): Promise<any> {
-    //baselineCircuitArtifacts
-    //-------------------------
-    //IZKSnarkCompilationArtifacts {
-    //	program: Uint8Array,
-    //	abi: string,
-    //} <++>
-
     const CHUNK_SIZE = 10000000;
     const fs = require("fs");
     const abi = fs
