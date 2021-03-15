@@ -202,7 +202,7 @@ export const shouldBehaveLikeAnInitialWorkgroupOrganization = function () {
     describe('zkSNARK circuits', () => {
       describe('compile', () => {
         before(async () => {
-          circuitArtifacts = await this.ctx.app.compileBaselineCircuit();
+          circuitArtifacts = await this.ctx.app.compilebaselinecircuit();
           assert(circuitArtifacts, 'compiled artifacts should not be null');
         });
 

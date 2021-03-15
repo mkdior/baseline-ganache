@@ -111,7 +111,7 @@ const odometer_increment = (odometer: any, array_of_arrays: any): any => {
 
 //Helper functies to handle bignumbers
 export const bnToBuf = (bn: any): Uint8Array => {
-	const bigInt = require("big-integer");
+  const bigInt = require("big-integer");
   var hex = bigInt(bn).toString(16);
   if (hex.length % 2) {
     hex = "0" + hex;
@@ -137,4 +137,108 @@ export const bnToBuf = (bn: any): Uint8Array => {
   } else var testa = u8;
 
   return testa;
+};
+
+export const flattenDeep = (arr: any[]): any => {
+  return arr.reduce(
+    (acc: any, val: any) =>
+      Array.isArray(val) ? acc.concat(flattenDeep(val)) : acc.concat(val),
+    []
+  );
+};
+
+export const parseToDigitsArray = (str: string, base: number) => {
+  const digits = str.split("");
+  const ary: number[] = [];
+  for (let i = digits.length - 1; i >= 0; i -= 1) {
+    const n = parseInt(digits[i], base);
+    if (Number.isNaN(n)) return null;
+    ary.push(n);
+  }
+  return ary;
+};
+
+/** Helper function for the converting any base to any base
+ */
+export const add = (x: number[], y: number[], base: number) => {
+  const z: number[] = [];
+  const n = Math.max(x.length, y.length);
+  let carry = 0;
+  let i = 0;
+  while (i < n || carry) {
+    const xi = i < x.length ? x[i] : 0;
+    const yi = i < y.length ? y[i] : 0;
+    const zi = carry + xi + yi;
+    z.push(zi % base);
+    carry = Math.floor(zi / base);
+    i += 1;
+  }
+  return z;
+};
+
+/** Helper function for the converting any base to any base
+ Returns a*x, where x is an array of decimal digits and a is an ordinary
+ JavaScript number. base is the number base of the array x.
+ */
+export const multiplyByNumber = (num: number, x: number[], base: number) => {
+  if (num < 0) throw "null";
+  if (num === 0) return [];
+
+  let result: number[] = [];
+  let power = x;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    // eslint-disable-next-line no-bitwise
+    if (num & 1) {
+      result = add(result, power, base);
+    }
+    num >>= 1; // eslint-disable-line
+    if (num === 0) break;
+    power = add(power, power, base);
+  }
+  return result;
+};
+
+/** Helper function for the converting any base to any base
+ */
+export const convertBase = (str: string, fromBase: number, toBase: number) => {
+  const digits = parseToDigitsArray(str, fromBase);
+  if (digits === null) throw "null";
+
+  let outArray: number[] | null = [];
+  let power: number[] | null = [1];
+  for (let i = 0; i < digits.length; i += 1) {
+    // invariant: at this point, fromBase^i = power
+    if (digits[i]) {
+      outArray = add(
+        outArray,
+        multiplyByNumber(digits[i], power, toBase),
+        toBase
+      );
+    }
+    power = multiplyByNumber(fromBase, power, toBase);
+  }
+
+  let out = "";
+  for (let i = outArray.length - 1; i >= 0; i -= 1) {
+    out += outArray[i].toString(toBase);
+  }
+  // if the original input was equivalent to zero, then 'out' will still be empty ''. Let's check for zero.
+  if (out === "") {
+    let sum = 0;
+    for (let i = 0; i < digits.length; i += 1) {
+      sum += digits[i];
+    }
+    if (sum === 0) out = "0";
+  }
+
+  return out;
+};
+
+// Converts hex strings to decimal values
+export const hexToDec = (hexStr: string) => {
+  if (hexStr.substring(0, 2) === "0x") {
+    return convertBase(hexStr.substring(2).toLowerCase(), 16, 10);
+  }
+  return convertBase(hexStr.toLowerCase(), 16, 10);
 };

@@ -46,10 +46,16 @@ export class EthClient implements ITxManager {
   ) {
     let error = null;
     let txHash: string;
+		logger.debug(`Debugging insertLeaf`)
+		logger.info(`Infoing insertLeaf`)
     try {
       const shieldInterface = new ethers.utils.Interface(shieldContract.abi);
+      logger.debug(`==============================================================`);
+      logger.debug(` Interface: verifyAndPush(uint256[8],uint256[2],bytes32) `)
+      logger.debug(`Inputs: ${proof} \n \n ${publicInputs} \n \n ${newCommitment}`)
+      logger.debug(`==============================================================`);
       const txData = shieldInterface.encodeFunctionData(
-        "verifyAndPush(uint256[],uint256[],bytes32)",
+        "verifyAndPush(uint256[8],uint256[2],bytes32)",
         [proof, publicInputs, newCommitment]
       );
       const signedTx = await this.signTx(toAddress, fromAddress, txData);

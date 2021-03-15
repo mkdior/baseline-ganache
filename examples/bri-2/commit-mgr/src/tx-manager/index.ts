@@ -1,5 +1,6 @@
 import { InfuraGas } from './infura-gas';
 import { EthClient } from './eth-client';
+import { logger } from "../logger";
 
 export interface ITxManager {
   insertLeaf(
@@ -28,6 +29,8 @@ export async function txManagerServiceFactory(
       service = new EthClient(config);
       break;
     case "ganache":
+			logger.debug(`Return a new Ethereum client.`);	
+			logger.info(`Return a new Ethereum client.`);	
       service = new EthClient(config);
       break;
     default:

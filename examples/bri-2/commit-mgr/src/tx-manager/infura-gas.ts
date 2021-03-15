@@ -54,7 +54,7 @@ export class InfuraGas implements ITxManager {
     try {
       const shieldInterface = new ethers.utils.Interface(shieldContract.abi);
       const txData = shieldInterface.encodeFunctionData(
-        "verifyAndPush(uint256[],uint256[],bytes32)",
+        "verifyAndPush(uint256[8],uint256[2],bytes32)",
         [proof, publicInputs, newCommitment]
       );
       const { signature, gasLimit } = await this.signTx(toAddress, fromAddress, txData);

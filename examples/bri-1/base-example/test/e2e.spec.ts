@@ -1,4 +1,6 @@
 import { Opcode } from "@baseline-protocol/types";
+import { concatenateThenHash } from "@baseline-protocol/privacy";
+
 import { assert } from "chai";
 import { ParticipantStack } from "../src";
 import {
@@ -17,6 +19,8 @@ import {
   scrapeInvitationToken,
 } from "./utils";
 
+import { flattenDeep, hexToDec } from "../src/utils/utils";
+
 // @TODO::Hamza, create a single file containing all exports for these mods
 // Section related to the WF PoC
 import {
@@ -27,6 +31,8 @@ import {
 } from "../src/mods/types";
 
 import { retrieveJobs } from "../src/mods/extract/extract";
+import { Mgr } from "./utils-ganache";
+import { ethers as Eth } from "ethers";
 
 const aliceCorpName = "Alice Corp";
 const bobCorpName = "Bob Corp";
@@ -141,6 +147,12 @@ describe("baseline", () => {
 
         workgroup = bobApp.getWorkgroup();
         workgroupToken = bobApp.getWorkgroupToken();
+
+			//"0x0000000000000000000000000000000000000000000000000000000000004ef3",
+      //"0x0000000000000000000000000000000000000000000000000000000000000000"
+			console.log("MarhalCircuitArg");
+			console.log(bobApp.marshalCircuitArg("0x0000000000000000000000000000000000000000000000000000000000004ef3"));
+			console.log(bobApp.marshalCircuitArg("0x0000000000000000000000000000000000000000000000000000000000000000"));
       });
 
       it("should create the workgroup in the local registry", async () => {
@@ -269,6 +281,7 @@ describe("baseline", () => {
           let proofs: any[] = [];
           let verifierAddress: string;
           let shieldAddress: string;
+					let txHash: string;
 
           before(async () => {
             verifierAddress = (
@@ -323,9 +336,83 @@ describe("baseline", () => {
             assert(proof);
           });
 
+          it("should verify that the merkle-tree is currently empty", async () => {
+            const treeEntries = await bobApp.requestMgr(
+              Mgr.Bob,
+              "baseline_getCommits",
+              [shieldAddress, 0, 5]
+            );
+            assert(Object.values(treeEntries).length === 0);
+          });
+
           it("should push the commitment to the merkle tree", async () => {
-            // baseline_verifyAndPush => params => senderAddress, contractAddress, proof, publicInputs, newCommitment
-            //async requestMgr(endpoint: Mgr, method: string, params: any): Promise<any> {
+            const provider = new Eth.providers.JsonRpcProvider(
+              "http://0.0.0.0:8545"
+            );
+            const sender = (await provider.listAccounts())[2];
+
+            const currentProof = proofs[0];
+
+            const proof = flattenDeep([
+              ...currentProof.proof.proof.a,
+              ...currentProof.proof.proof.b,
+              ...currentProof.proof.proof.c,
+            ]).reduce(
+              (old: any, current: any): any[] => [...old, hexToDec(current)],
+              []
+            );	
+
+            const inputs = flattenDeep(proofs[0].proof.inputs).reduce(
+              (old: any, current: any): any[] => [...old, hexToDec(current)],
+              []
+            );
+
+						console.log(`Proof || Inputs formatting: \n ${JSON.stringify(proof, undefined, 2)} \n ${JSON.stringify(inputs, undefined, 2)}`);
+						console.log();
+						console.log();
+						console.log(`Current root: `);
+            console.log(await bobApp.requestMgr(
+              Mgr.Bob,
+              "baseline_getRoot",
+              [
+                shieldAddress
+              ]
+            ));
+
+            txHash = (await bobApp.requestMgr(
+              Mgr.Bob,
+              "baseline_verifyAndPush",
+              [
+                sender,
+                shieldAddress,
+                proof,
+                inputs,
+								"0x7465737400000000000000000000000000000000000000000000000000000000",
+                //concatenateThenHash(
+                //  JSON.stringify(commitments[0], (_, key: any) =>
+                //    typeof key === "bigint" ? key.toString() : key
+                //  )
+                //),
+              ]
+            )).txHash;
+						
+						console.log(`Transaction hash has been received; let's wait 5 seconds to resolve: ${txHash}`);
+						await promisedTimeout(5000);
+						const receipt = await bobApp.getReceipt(txHash);
+
+						console.log("Tx details");
+						console.log(JSON.stringify(receipt.text, undefined, 2));
+
+						await promisedTimeout(2000);
+						console.log(`Current root: `);
+            console.log(await bobApp.requestMgr(
+              Mgr.Bob,
+              "baseline_getRoot",
+              [
+                shieldAddress
+              ]
+            ));
+							
             assert(true);
           });
         });

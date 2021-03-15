@@ -731,7 +731,7 @@ export class ParticipantStack {
     });
   }
 
-  private marshalCircuitArg(val: string, fieldBits?: number): string[] {
+  public marshalCircuitArg(val: string, fieldBits?: number): string[] {
     const el = elementify(val) as Element;
     return el.field(fieldBits || 128, 1, true);
   }
@@ -752,6 +752,8 @@ export class ParticipantStack {
     // Needed because each instance of commit-mgr can only track a single shield address.
     const ep =
       endpoint === Mgr.Bob ? this.commitMgrApiBob : this.commitMgrApiAlice;
+
+		console.log(`Request sent under ${ep}`);
 
     return await ep
       .post("/jsonrpc")
@@ -836,7 +838,7 @@ export class ParticipantStack {
       `${baselineDocumentCircuitPath}/keys/proving.key`
     );
 
-    const proof = (async (program: any, witness: any, pk: any) => {
+    const proof = await (async (program: any, witness: any, pk: any) => {
 			// Blank self out; if you don't do this Zokrates will error out.
 			// Make sure to restore self once the call to Zokrates is done.
       const stateCapture = self;
@@ -1405,6 +1407,8 @@ export class ParticipantStack {
     //		return artifacts!;
     //	})();
 
+		// @TODO::Hamza -- Perhaps try using Radish's key import script?
+
     const compilerOutput = JSON.parse(
       solidityCompile(
         JSON.stringify({
@@ -1466,7 +1470,7 @@ export class ParticipantStack {
           },
           {
             parType: "uint",
-            parValue: 2,
+            parValue: 4,
           },
         ],
       },
@@ -1549,6 +1553,15 @@ export class ParticipantStack {
 
     return trackedShield;
   }
+
+	async getReceipt(txHash: string): Promise<any> {
+		return await this.commitMgrApiBob.post("/jsonrpc").send({
+        jsonrpc: "2.0",
+        method: "eth_getTransactionReceipt",
+        params: [txHash],
+        id: 1,
+      });
+	}
 
   async deployWorkgroupContract(
     name: string,
@@ -1672,12 +1685,8 @@ export class ParticipantStack {
       },
     };
 
-    console.log("Pre token signing");
-
     // Time to sign the reconstructed object
     const token = jwt.sign(decodedInvite, "0x0");
-
-    console.log(`Post token signing: \n ${token}`);
 
     return Promise.resolve(token);
   }

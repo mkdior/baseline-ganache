@@ -197,14 +197,14 @@ export const shieldContract = {
     {
       "inputs": [
         {
-          "internalType": "uint256[]",
+          "internalType": "uint256[8]",
           "name": "_proof",
-          "type": "uint256[]"
+          "type": "uint256[8]"
         },
         {
-          "internalType": "uint256[]",
+          "internalType": "uint256[2]",
           "name": "_publicInputs",
-          "type": "uint256[]"
+          "type": "uint256[2]"
         },
         {
           "internalType": "bytes32",

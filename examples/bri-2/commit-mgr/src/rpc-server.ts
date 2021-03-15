@@ -188,6 +188,7 @@ const baseline_verifyAndPush = new jayson.Method(
     const proof = args[2];
     const publicInputs = args[3];
     const newCommitment = args[4];
+
     const record = await merkleTrees.findOne({ _id: `${contractAddress}_0` }).select('shieldContract').lean();
     if (!record) {
       logger.error(`[baseline_verifyAndPush] Merkle Tree not found in db: ${contractAddress}`);
@@ -205,6 +206,7 @@ const baseline_verifyAndPush = new jayson.Method(
 
     let result;
     try {
+			logger.info(`Trying to insert leaf -- HAMZA`);
       result = await txManager.insertLeaf(contractAddress, senderAddress, proof, publicInputs, newCommitment);
     } catch (err) {
       logger.error(`[baseline_verifyAndPush] ${err}`);
