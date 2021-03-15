@@ -148,11 +148,19 @@ describe("baseline", () => {
         workgroup = bobApp.getWorkgroup();
         workgroupToken = bobApp.getWorkgroupToken();
 
-			//"0x0000000000000000000000000000000000000000000000000000000000004ef3",
-      //"0x0000000000000000000000000000000000000000000000000000000000000000"
-			console.log("MarhalCircuitArg");
-			console.log(bobApp.marshalCircuitArg("0x0000000000000000000000000000000000000000000000000000000000004ef3"));
-			console.log(bobApp.marshalCircuitArg("0x0000000000000000000000000000000000000000000000000000000000000000"));
+        //"0x0000000000000000000000000000000000000000000000000000000000004ef3",
+        //"0x0000000000000000000000000000000000000000000000000000000000000000"
+        console.log("MarhalCircuitArg");
+        console.log(
+          bobApp.marshalCircuitArg(
+            "0x0000000000000000000000000000000000000000000000000000000000004ef3"
+          )
+        );
+        console.log(
+          bobApp.marshalCircuitArg(
+            "0x0000000000000000000000000000000000000000000000000000000000000000"
+          )
+        );
       });
 
       it("should create the workgroup in the local registry", async () => {
@@ -281,7 +289,7 @@ describe("baseline", () => {
           let proofs: any[] = [];
           let verifierAddress: string;
           let shieldAddress: string;
-					let txHash: string;
+          let txHash: string;
 
           before(async () => {
             verifierAddress = (
@@ -360,59 +368,49 @@ describe("baseline", () => {
             ]).reduce(
               (old: any, current: any): any[] => [...old, hexToDec(current)],
               []
-            );	
+            );
 
             const inputs = flattenDeep(proofs[0].proof.inputs).reduce(
               (old: any, current: any): any[] => [...old, hexToDec(current)],
               []
             );
 
-						console.log(`Proof || Inputs formatting: \n ${JSON.stringify(proof, undefined, 2)} \n ${JSON.stringify(inputs, undefined, 2)}`);
-						console.log();
-						console.log();
-						console.log(`Current root: `);
-            console.log(await bobApp.requestMgr(
-              Mgr.Bob,
-              "baseline_getRoot",
-              [
-                shieldAddress
-              ]
-            ));
+            await bobApp.requestMgr(Mgr.Bob, "baseline_verifyAndPush", [
+              sender,
+              shieldAddress,
+              proof,
+              inputs,
+              concatenateThenHash(
+                JSON.stringify(commitments[0], (_, key: any) =>
+                  typeof key === "bigint" ? key.toString() : key
+                )
+              ),
+            ]);
 
-            txHash = (await bobApp.requestMgr(
-              Mgr.Bob,
-              "baseline_verifyAndPush",
-              [
-                sender,
-                shieldAddress,
-                proof,
-                inputs,
-								"0x7465737400000000000000000000000000000000000000000000000000000000",
-                //concatenateThenHash(
-                //  JSON.stringify(commitments[0], (_, key: any) =>
-                //    typeof key === "bigint" ? key.toString() : key
-                //  )
-                //),
-              ]
-            )).txHash;
-						
-						console.log(`Transaction hash has been received; let's wait 5 seconds to resolve: ${txHash}`);
-						await promisedTimeout(5000);
-						const receipt = await bobApp.getReceipt(txHash);
+            // Give time for event catching and database updates.
+            await promisedTimeout(2000);
 
-						console.log("Tx details");
-						console.log(JSON.stringify(receipt.text, undefined, 2));
+            const root = await bobApp.requestMgr(Mgr.Bob, "baseline_getRoot", [
+              shieldAddress,
+            ]);
 
-						await promisedTimeout(2000);
-						console.log(`Current root: `);
-            console.log(await bobApp.requestMgr(
+            console.log(`Root after insertion: ${root}`);
+
+            assert(
+              root.toString() !==
+                "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "Root should not be null after insertion."
+            );
+          });
+
+          it("should yeet", async () => {
+            const treeEntries = await bobApp.requestMgr(
               Mgr.Bob,
-              "baseline_getRoot",
-              [
-                shieldAddress
-              ]
-            ));
-							
+              "baseline_getCommits",
+              [shieldAddress, 0, 5]
+            );
+            console.log(JSON.stringify(treeEntries, undefined, 2));
+
             assert(true);
           });
         });

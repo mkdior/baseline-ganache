@@ -753,8 +753,6 @@ export class ParticipantStack {
     const ep =
       endpoint === Mgr.Bob ? this.commitMgrApiBob : this.commitMgrApiAlice;
 
-		console.log(`Request sent under ${ep}`);
-
     return await ep
       .post("/jsonrpc")
       .send({
