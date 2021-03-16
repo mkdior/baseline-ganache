@@ -737,7 +737,6 @@ export class ParticipantStack {
   }
 
   // Wrapper for commit-mgr requests
-  // @TODO Finish the other params here
   // baseline_getCommit => params => contractAddress, leafIndex
   // baseline_getCommits => params => contractAddress, startLeafIndex, count
   // baseline_getRoot => params => contractAddress
@@ -884,6 +883,8 @@ export class ParticipantStack {
       mkLC.lc1 = bigInt(0);
       mkLC.lc2 = bigInt(0);
     } else {
+			// If state == 1 it means that we have a single previous commits; this will always be found at leafIndex 0
+			const lastLeaf = this.requestMgr(Mgr.Bob, "baseline_getCommit", [meta.shieldAddr, 0]);
       //mkLC.lc1 = ethers.getCommit(meta.shieldAddr, leafIndexLC)[0]; //dit klopt nog niet maar komt in de buurt
       //mkLC.lc2 = ethers.getCommit(meta.shieldAddr, leafIndexLC)[1]; //dit klopt nog niet maar komt in de buurt. Ook moet wss de commitment string gesplitst worden voordat mkLC ingevoerd wordt.
     }

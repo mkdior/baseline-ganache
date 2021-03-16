@@ -24,7 +24,7 @@
     "@baseline-protocol/api": "0.2.0",
     "@baseline-protocol/messaging": "0.1.0",
     "@baseline-protocol/privacy": "file:tars/baseline-protocol-privacy-1.0.0.tgz",
-    "@baseline-protocol/types": "0.1.0",
+    "@baseline-protocol/types": "file:../../../core/alteredTypes/V2/V2.tar",
     "@ethersproject/experimental": "5.0.8",
     "@types/mongoose": "^5.9.25",
     "@types/supertest": "^2.0.10",

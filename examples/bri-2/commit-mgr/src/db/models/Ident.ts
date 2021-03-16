@@ -44,7 +44,7 @@ export interface IWorkgroup extends Document {
 export interface IOrganizationGetter {
   name: IOrganization['name'];
   userId: IOrganization['userId'];
-  type: IOrganization['type'];
+  //type: IOrganization['type'];
   metadata: IOrganization['metadata'];
 };
 

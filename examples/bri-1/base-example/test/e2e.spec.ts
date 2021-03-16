@@ -26,11 +26,12 @@ import { flattenDeep, hexToDec } from "../src/utils/utils";
 import {
   Job,
   Priority,
+	SupplierType,
   VerifierInterface,
   CommitmentMetaData,
 } from "../src/mods/types";
 
-import { retrieveJobs } from "../src/mods/extract/extract";
+import { retrieveJobs, reqExpander } from "../src/mods/extract/extract";
 import { Mgr } from "./utils-ganache";
 import { ethers as Eth } from "ethers";
 
@@ -289,7 +290,7 @@ describe("baseline", () => {
           let proofs: any[] = [];
           let verifierAddress: string;
           let shieldAddress: string;
-          let txHash: string;
+					let supplierTToAddressMap: { [key: string]: SupplierType } = {};
 
           before(async () => {
             verifierAddress = (
@@ -315,8 +316,22 @@ describe("baseline", () => {
               verifierAddr: verifierAddress,
               state: bigInt(0),
             };
+
+						// Job.reqs =  {
+						//  spare: string;
+						//  vessel: string;
+						//  tech: number;
+						//  port: string;
+						//  taskLength: number;
+						//}
+
             const commitment = bobApp.createCommitment(job, commitmentMeta);
             commitments.push(commitment);
+
+						// Ensure that during this workflow we have a reference to the current (single) job.
+						// @TODO::Hamza -- Just pop this off so that we can still use the other jobs later.
+						maintenanceData = [job];
+
             assert(commitment);
           });
 
@@ -394,8 +409,6 @@ describe("baseline", () => {
               shieldAddress,
             ]);
 
-            console.log(`Root after insertion: ${root}`);
-
             assert(
               root.toString() !==
                 "0x0000000000000000000000000000000000000000000000000000000000000000",
@@ -403,16 +416,43 @@ describe("baseline", () => {
             );
           });
 
-          it("should yeet", async () => {
-            const treeEntries = await bobApp.requestMgr(
-              Mgr.Bob,
+          it("should update Alice's merkle-tree", async () => {
+            const treeEntries = await aliceApp.requestMgr(
+              Mgr.Alice,
               "baseline_getCommits",
               [shieldAddress, 0, 5]
             );
-            console.log(JSON.stringify(treeEntries, undefined, 2));
 
-            assert(true);
+            assert(treeEntries.length > 0, "Alice's merkle tree should not be empty after Bob's insertion.");
           });
+
+					it("should determine which suppliers to contact for the currently selected maintenance job", async () => {
+						// reqExpander returns an array of all needed supplier types.
+						// In this test-suite we're assuming that Alice is always the correct and only supplier.
+						const expReqs = reqExpander(maintenanceData);	
+						const counterParties = bobApp.getWorkgroupCounterparties();
+
+						assert(Object.keys(expReqs).length > 0, "This job has no required suppliers.");
+						assert(counterParties.length > 0, "This workgroup has no counterparties.");
+						
+						// Assuming that we have a single counterparty
+						supplierTToAddressMap = {
+							[counterParties[0]]: (Object.values(expReqs)[0])[0]
+						};
+
+						assert(Object.keys(supplierTToAddressMap).length > 0, "No mapping between an address and a supplier type could be found.");
+					});
+
+					// Send MJCont to Supplier
+					// -- Each supplier
+					// Supplier generates new commitment using received mjCont compares this to the commitment in the tree
+					// Supplier, if commitment is valid, run Avail module
+					// Supplier then returns supCont[mjID, supplierID, AVA, price] to Initiator
+					// --
+					// Initiator receives set of supConts
+					// If supConts.count > No. of supp. needed
+						// Generate selection commitment and push to shield.
+
         });
       });
     });
