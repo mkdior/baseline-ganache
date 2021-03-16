@@ -41,6 +41,29 @@ export interface IWorkgroup extends Document {
   description: string;
 }
 
+export interface IOrganizationGetter {
+  name: IOrganization['name'];
+  userId: IOrganization['userId'];
+  type: IOrganization['type'];
+  metadata: IOrganization['metadata'];
+};
+
+export interface IUserGetter {
+  email: IUser['email'];
+  firstName: IUser['firstName'];
+  lastName: IUser['lastName'];
+  name: IUser['name'];
+  permissions: IUser['permissions'];
+};
+
+export interface IWorkgroupGetter {
+  orgInfoSet:  IWorkgroup['orgInfoSet']; 
+  name: IWorkgroup['name'];
+  userId: IWorkgroup['userId'];
+  description: IWorkgroup['description'];
+
+}; 
+
 export const organizationSchema: Schema = new Schema({
   createdAt: {
     type: Date,
@@ -49,6 +72,7 @@ export const organizationSchema: Schema = new Schema({
   name: { type: String, required: true },
   userId: String,
   description: String,
+  type: Number,
   metadata: {
     messaging_endpoint: String,
   },
