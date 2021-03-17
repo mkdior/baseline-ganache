@@ -626,7 +626,7 @@ export class ParticipantStack {
       });
 
       let payload = {
-        id: `${message_payload.id}`,
+        id: `${message_payload.mjCont.id}`,
         intention: `${Intention.Response}`,
         date: `${new Date().toDateString()}`,
         availability: `${JSON.stringify(supplierAvail)}`,
@@ -884,12 +884,12 @@ export class ParticipantStack {
     };
   }
 
-  createCommitment(
+  async createCommitment(
     mjCont: Job,
     meta: CommitmentMetaData,
     leafIndexLC?: number,
     supCont?: SuppContainer
-  ): VerifierInterface {
+  ): Promise<VerifierInterface> {
     // Wrapper for around big-int since we can't compile to es2020
     // without losing the ability to use.?this.
     const bigInt = require("big-integer");
@@ -913,17 +913,36 @@ export class ParticipantStack {
         contractH2: bigInt(0),
       } as SuppContainer;
 
-    if (state == bigInt(1)) {
+    if (state == bigInt(0).value) {
       mkLC.lc1 = bigInt(0);
       mkLC.lc2 = bigInt(0);
     } else {
       // If state == 1 it means that we have a single previous commits; this will always be found at leafIndex 0
-      const lastLeaf = this.requestMgr(Mgr.Bob, "baseline_getCommit", [
+      const lastLeaf: any[] = await this.requestMgr(Mgr.Bob, "baseline_getCommits", [
         meta.shieldAddr,
         0,
+				10
       ]);
-      //mkLC.lc1 = ethers.getCommit(meta.shieldAddr, leafIndexLC)[0]; //dit klopt nog niet maar komt in de buurt
-      //mkLC.lc2 = ethers.getCommit(meta.shieldAddr, leafIndexLC)[1]; //dit klopt nog niet maar komt in de buurt. Ook moet wss de commitment string gesplitst worden voordat mkLC ingevoerd wordt.
+			
+			console.log("Last 10 leaves");
+			console.log(JSON.stringify(lastLeaf, undefined, 2));
+
+			let leafHash: string = lastLeaf[(lastLeaf.length - 1)].hash;
+			console.log("Last leaf's hash");
+			console.log(JSON.stringify(leafHash, undefined, 2));
+
+			leafHash = leafHash.substr(2, leafHash.length);
+			console.log("LeafHash stripped");
+			console.log(lastLeaf);
+
+			const leafHashBN = bigInt(leafHash, 16).toString();
+			console.log("LeafHashBN string");
+			console.log(leafHashBN);
+			
+			// @-->>> To re-create the commitment hash from the merkle tree, you will have to first
+			// 
+      mkLC.lc1 = bigInt(leafHashBN.substr(0, (leafHashBN.length / 2)));
+      mkLC.lc2 = bigInt(leafHashBN.substr((leafHashBN.length / 2), leafHashBN.length));
     }
 
     if (state == bigInt(1) || state == bigInt(2) || state == bigInt(5)) {
@@ -1035,37 +1054,7 @@ export class ParticipantStack {
     verifierInp.nc1 = newcom1;
     verifierInp.nc2 = newcom2;
 
-    return verifierInp; //contains all the right inputs for proof generation for verifier.sol, including the newly generated commitment.
-  }
-
-  checkCommitment(
-    mjContforCom: Job,
-    supCont: SuppContainer,
-    meta: CommitmentMetaData,
-    leafIndexLC: any
-  ) {
-    //Check if latest commitment in tree is correctly build from info and previous commitment
-    //First createCommitment based on same information the latest commitment is build from
-    const bigInt = require("big-integer");
-
-    let verifierInp = this.createCommitment(
-      mjContforCom,
-      meta,
-      leafIndexLC - 1,
-      supCont
-    );
-    let mkLC: { lc1: bigint; lc2: bigint } = { lc1: bigInt(0), lc2: bigInt(0) };
-    //Get latest commitments from MT:
-    //  mkLC.lc1 = ethers.getCommit(meta.shieldAddr, leafIndexLC)[0]; //dit klopt nog niet maar komt in de buurt I guess. Depends in wat voor format we de latest commitments terug krijgen.
-    //  mkLC.lc2 = ethers.getCommit(meta.shieldAddr, leafIndexLC)[1];
-    //
-    //Compare results
-    let goodCom = false;
-    if (mkLC.lc1 == verifierInp.nc1 && mkLC.lc2 == verifierInp.nc2) {
-      goodCom = true;
-    }
-
-    return goodCom;
+    return Promise.resolve(verifierInp); //contains all the right inputs for proof generation for verifier.sol, including the newly generated commitment.
   }
 
   async resolveMessagingEndpoint(addr: string): Promise<string> {

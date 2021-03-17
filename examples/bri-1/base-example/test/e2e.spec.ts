@@ -1,5 +1,5 @@
 import { Opcode, Intention } from "@baseline-protocol/types";
-import { concatenateThenHash } from "@baseline-protocol/privacy";
+import { concatenateThenHash, binToHex } from "@baseline-protocol/privacy";
 
 import { assert } from "chai";
 import { ParticipantStack } from "../src";
@@ -318,7 +318,7 @@ describe("baseline", () => {
               state: bigInt(0),
             };
 
-            const commitment = bobApp.createCommitment(job, commitmentMeta);
+            const commitment = await bobApp.createCommitment(job, commitmentMeta);
             commitments.push(commitment);
 
             // Ensure that during this workflow we have a reference to the current (single) job.
@@ -474,9 +474,24 @@ describe("baseline", () => {
             }
           });
 
-          // Initiator receives set of supConts
-          // If supConts.count > No. of supp. needed
-          // Generate selection commitment and push to shield.
+					it("should generate a selection commit after receiving all parties' availability", async () => {
+          	// Initiator receives set of supConts
+          	// If supConts.count > No. of supp. needed
+          	// Generate selection commitment and push to shield.
+						//
+          	//let maintenanceData: Job[] = [];
+          	//let commitments: VerifierInterface[] = [];
+          	//let commitmentMeta: CommitmentMetaData;
+          	//let proofs: any[] = [];
+          	//let verifierAddress: string;
+          	//let shieldAddress: string;
+          	//let supplierTToAddressMap: { [key: string]: SupplierType } = {};
+
+						await promisedTimeout(20000);
+
+
+
+					});
         });
       });
     });
