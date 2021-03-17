@@ -26,6 +26,7 @@ import {
 import {
   Message as ProtocolMessage,
   Opcode,
+	Intention,
   PayloadType,
   marshalProtocolMessage,
   unmarshalProtocolMessage,
@@ -72,8 +73,14 @@ import {
   CommitmentMetaData,
   VerifierInterface,
   SuppContainer,
+	FileStructure,
   Job,
+  SupplierType,
 } from "../src/mods/types";
+
+import {
+	requestAvailability
+} from "./mods/avail/avail";
 
 const baselineProtocolMessageSubject = "baseline.inbound";
 
@@ -114,6 +121,11 @@ export class ParticipantStack {
   private contracts: any;
   private ganacheContracts: any;
   private zk?: IZKSnarkCircuitProvider;
+
+  // Dummy storage for the WF Operators
+  // Once availability data is sent back from a Supplier we will store
+  // the data in [supplier_address] => [availability] format.
+  private availabilityData: { [key: string]: [number] } = {};
 
   private org?: any;
   private workgroup?: any;
@@ -610,7 +622,149 @@ export class ParticipantStack {
       this.workgroupCounterparties.push(payload.address);
       this.natsBearerTokens[messagingEndpoint] =
         payload.authorized_bearer_token;
-    }
+    } else if (msg.opcode === Opcode.Availability) {
+
+      // Message was sent and we're currently in the subscription distribution phase;
+      // this happens on the supplier's side. Time to handle the incoming request.
+      // Opcode.Availability assumes a specific structure to a message
+      // {
+      //    start_day: 1~x
+      //    duration: 1~x
+      // }
+      // From this point on, since we're working locally, we can now connect with the ERP system
+      // to retrieve TM and do our availability check. After we've completed the availability check
+      // we send back the availability to the counterparty. TM = ParticipantStack.availabilityData
+
+      //{    *_* Payload format *_*
+      //        "id": "uuidv4()",
+      //        "date": "new Date()).toDateString()"
+      //}
+
+      let message_payload = JSON.parse(msg.payload.toString());
+			console.log(JSON.stringify(message_payload, undefined, 2));
+
+      // Check if received of the Availability call is the WFOperator.
+      if (
+        this.baselineConfig.initiator &&
+        message_payload.intention == Intention.Response
+      ) {
+        // We're the wind farm operator; entering this branch means we've actually received a response
+        // from some arbitrary supplier with availability data. Time to process said data.
+        console.log(
+          "-- Availability response received from Supplier. Adding to registry."
+        );
+        this.availabilityData[msg.sender] = message_payload.availability;
+				console.log(`Current registry: ${JSON.stringify(this.availabilityData, undefined, 2)}`);
+
+        // Make assumption that for this part we just have a single supplier, in reality multiple
+        // suppliers process the initial request and we receive, multiple availabilities. This
+        // function will choose the best availability for our use-case. TODO::(Hamza) Implement
+        // @-->>> Allignment and Selection
+
+				// @-->>> Notify selected suppliers that they've been chosen
+        //await this.sendProtocolMessage(optimal_supplier, Opcode.Baseline, {
+        //  doc: {
+        //    id: `${message_payload.id}`,
+        //    date: `${new Date().toDateString()}`,
+        //    availability: this.availabilityData[optimal_supplier],
+        //    name: `Avail-001`,
+        //    url: `url/1`,
+        //  },
+        //});
+
+        return;
+      }
+
+      console.log("-- Availability request received from Operator!");
+			// -- Each supplier
+			// 	Supplier generates new commitment using received mjCont compares this to the commitment in the tree
+			// 	Supplier, if commitment is valid, run Avail module
+			// 	Supplier then returns supCont[mjID, supplierID, AVA, price] to Initiator
+			// --
+
+			// @-->>> Retrieve availability
+
+			// mjCont: {
+			// 	id: `${uuid4()}`,
+			// 	date: `${new Date().toDateString()}`,
+			// 	name: `Avail-001`,
+			// 	mj: JSON.stringify(maintenanceData) <<<-- Feed this into CommitmentGenerator
+			//  meta: JSON.stringify(commitmentMeta) <<<-- Feed this into the CommitmentGenerator
+			// }
+
+			// mj {
+			//   id: number;
+			//   wtId: string;
+			//   mJCode: string;
+			//   tw: number[];
+			//   reqs: ReqContent;
+			// }
+
+			// reqs =  {
+			//  spare: string;
+			//  vessel: string;
+			//  tech: number;
+			//  port: string;
+			//  taskLength: number;
+			//}
+
+			const job = JSON.parse(message_payload.mjCont.mj.data);
+			const meta = JSON.parse(message_payload.mjCont.meta.data);
+	
+			// Generate commitment
+			const commitment = this.createCommitment(job, meta);
+			const commitmentHash = concatenateThenHash(
+				JSON.stringify(commitment, (_, key: any) => typeof key === "bigint" ? key.toString() : key));	
+
+			// Retrieve the latest entry from the merkle tree.
+			const firstLeaf = (await this.requestMgr(
+			  Mgr.Alice,
+			  "baseline_getCommits",
+			  [this.contracts["shield"].address, 0, 5]
+			))[0];
+
+			// Compare commitmentHash to our commitment
+			// Always assume that at this point we have just a single commitment.
+			// This assumption is supposed to be held true because we're working 
+			// with Opcode.Availability. The whole workflow is repeated for each job
+			// which in turn means that we're just dealing with Opcode.Availability
+			// once.
+			if(firstLeaf.hash !== commitmentHash) return;	
+
+			// Assume that this Availability checker only retrieves data from the current supplier's
+			// database.
+			const supplierAvail: FileStructure = (await requestAvailability(
+				[SupplierType.TECHNICIAN], 
+				job.tw, 
+				job.reqs.taskLength
+			))[0];
+
+			console.log({
+				a: [3],
+				b: job.tw,
+				c: job.reqs.taskLength
+			});
+
+      let payload = {
+        id: `${message_payload.id}`,
+        intention: `${Intention.Response}`,
+        date: `${new Date().toDateString()}`,
+        availability: `${JSON.stringify(supplierAvail)}`,
+      };
+
+      console.log(
+        `Preparing to send a message back to the initiator: payload: ${JSON.stringify(
+          payload,
+          undefined,
+          2
+        )}`
+      );
+
+      // Send the availability data back to the initiator.
+      this.workgroupCounterparties.forEach(async (recipient) => {
+        this.sendProtocolMessage(recipient, Opcode.Availability, payload);
+      });
+		}
   }
 
   // HACK!! workgroup/contracts should be synced via protocol

@@ -1,4 +1,4 @@
-import { Opcode } from "@baseline-protocol/types";
+import { Opcode, Intention } from "@baseline-protocol/types";
 import { concatenateThenHash } from "@baseline-protocol/privacy";
 
 import { assert } from "chai";
@@ -287,6 +287,7 @@ describe("baseline", () => {
 
           let maintenanceData: Job[] = [];
           let commitments: VerifierInterface[] = [];
+					let commitmentMeta: CommitmentMetaData;
           let proofs: any[] = [];
           let verifierAddress: string;
           let shieldAddress: string;
@@ -311,19 +312,11 @@ describe("baseline", () => {
           it("should generate a genesis commitment based on all current maintenance data", async () => {
             // Grab the first job from the priority list:
             const job = maintenanceData[0];
-            const commitmentMeta: CommitmentMetaData = {
+            commitmentMeta = {
               shieldAddr: shieldAddress,
               verifierAddr: verifierAddress,
               state: bigInt(0),
             };
-
-						// Job.reqs =  {
-						//  spare: string;
-						//  vessel: string;
-						//  tech: number;
-						//  port: string;
-						//  taskLength: number;
-						//}
 
             const commitment = bobApp.createCommitment(job, commitmentMeta);
             commitments.push(commitment);
@@ -331,6 +324,10 @@ describe("baseline", () => {
 						// Ensure that during this workflow we have a reference to the current (single) job.
 						// @TODO::Hamza -- Just pop this off so that we can still use the other jobs later.
 						maintenanceData = [job];
+
+						// @-->>> Test thing out in this area prior to proof generation for time savings
+						
+						// #-->>>
 
             assert(commitment);
           });
@@ -444,11 +441,23 @@ describe("baseline", () => {
 					});
 
 					// Send MJCont to Supplier
-					// -- Each supplier
-					// Supplier generates new commitment using received mjCont compares this to the commitment in the tree
-					// Supplier, if commitment is valid, run Avail module
-					// Supplier then returns supCont[mjID, supplierID, AVA, price] to Initiator
-					// --
+					it("should send the initiating availability request to the supplers", async() => {		
+						const uuid4 = require('uuid4');
+						for (const [supplier, stype] of Object.entries(supplierTToAddressMap)) {	
+							console.log(`Sending Availability check to ${supplier} of type ${stype}`);
+							await bobApp.sendProtocolMessage(supplier, Opcode.Availability, {
+								mjCont: {
+									id: `${uuid4()}`,
+									date: `${new Date().toDateString()}`,
+									name: `Avail-001`,
+									intention: Intention.Request,
+									mj:  { data: JSON.stringify(maintenanceData[0])},
+									meta: { data: JSON.stringify(commitmentMeta)}
+								},
+							});
+						}
+					});
+					
 					// Initiator receives set of supConts
 					// If supConts.count > No. of supp. needed
 						// Generate selection commitment and push to shield.

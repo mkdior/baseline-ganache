@@ -1,6 +1,5 @@
 import { fileReader } from "../../utils/utils";
 import {
-  Structure,
   FileStructure,
   FileContentStructure,
   SupplierType,
@@ -20,7 +19,7 @@ const fileImporter = async (folders: string[]) => {
     for (const folder of folders) {
       // Loop through all folders
       await new Promise((resolve: any, reject: any) => {
-        fs.readdir(`moduleAvail/${folder}`, (error: any, files: any) => {
+        fs.readdir(`src/mods/avail/${folder}`, (error: any, files: any) => {
           if (error) reject(error);
           if (files) {
             for (const file of files) {
@@ -29,7 +28,7 @@ const fileImporter = async (folders: string[]) => {
                 case "ports": {
                   contentQueue.push(
                     fileReader(
-                      `moduleAvail/${folder}/${file}`,
+                      `src/mods/avail/${folder}/${file}`,
                       SupplierType.PORT
                     )
                   );
@@ -38,7 +37,7 @@ const fileImporter = async (folders: string[]) => {
                 case "spares": {
                   contentQueue.push(
                     fileReader(
-                      `moduleAvail/${folder}/${file}`,
+                      `src/mods/avail/${folder}/${file}`,
                       SupplierType.SPARE
                     )
                   );
@@ -47,7 +46,7 @@ const fileImporter = async (folders: string[]) => {
                 case "technicians": {
                   contentQueue.push(
                     fileReader(
-                      `moduleAvail/${folder}/${file}`,
+                      `src/mods/avail/${folder}/${file}`,
                       SupplierType.TECHNICIAN
                     )
                   );
@@ -56,7 +55,7 @@ const fileImporter = async (folders: string[]) => {
                 case "vessels": {
                   contentQueue.push(
                     fileReader(
-                      `moduleAvail/${folder}/${file}`,
+                      `src/mods/avail/${folder}/${file}`,
                       SupplierType.VESSEL
                     )
                   );
