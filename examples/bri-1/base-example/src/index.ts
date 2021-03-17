@@ -26,7 +26,7 @@ import {
 import {
   Message as ProtocolMessage,
   Opcode,
-	Intention,
+  Intention,
   PayloadType,
   marshalProtocolMessage,
   unmarshalProtocolMessage,
@@ -73,14 +73,12 @@ import {
   CommitmentMetaData,
   VerifierInterface,
   SuppContainer,
-	FileStructure,
+  FileStructure,
   Job,
   SupplierType,
 } from "../src/mods/types";
 
-import {
-	requestAvailability
-} from "./mods/avail/avail";
+import { requestAvailability } from "./mods/avail/avail";
 
 const baselineProtocolMessageSubject = "baseline.inbound";
 
@@ -475,137 +473,7 @@ export class ParticipantStack {
   }
 
   private async dispatchProtocolMessage(msg: ProtocolMessage): Promise<any> {
-    if (msg.opcode === Opcode.Baseline) {
-      const vault = await this.requireVault();
-      const workflowSignatories = 2;
-
-      const payload = JSON.parse(msg.payload.toString());
-
-      if (payload.doc) {
-        if (!payload.sibling_path) {
-          payload.sibling_path = [];
-        }
-        if (!payload.signatures) {
-          payload.signatures = [];
-        }
-        if (!payload.hash) {
-          payload.hash = sha256(JSON.stringify(payload.doc));
-        }
-
-        if (payload.signatures.length === 0) {
-          // baseline this new document
-          payload.result = await this.generateProof("preimage", payload);
-
-          const signature = (
-            await this.signMessage(
-              vault.id!,
-              this.babyJubJub?.id!,
-              sha256(JSON.stringify(payload.result.proof.proof))
-            )
-          ).signature;
-
-          payload.signatures = [signature];
-
-          console.log(
-            `${this.org.name} just signed the document which is to be baselined.`
-          );
-          console.log(
-            `There are now ${payload.signatures.length} of the ${workflowSignatories} signatures collected.`
-          );
-
-          // @TODO::Hamza -- valid for just two parties? I guess we change this once we have
-          // more than two counterparties.
-          this.workgroupCounterparties.forEach(async (recipient) => {
-            console.log(`Sending a baseline request to ${msg.sender}`);
-            this.sendProtocolMessage(msg.sender, Opcode.Baseline, payload);
-          });
-        } else if (payload.signatures.length < workflowSignatories) {
-          if (payload.sibling_path && payload.sibling_path.length > 0) {
-            // perform off-chain verification to make sure this is a legal state transition
-            const root = payload.sibling_path[0];
-            const verified = this.requestMgr(Mgr.Bob, "baseline_verify", [
-              this.ganacheContracts["shield"].address,
-              payload.leaf,
-              root,
-              payload.sibling_path,
-            ])
-              .then((res: any) => res)
-              .catch(() => undefined);
-
-            if (!verified) {
-              console.log(
-                "WARNING-- off-chain verification of proposed state transition failed..."
-              );
-              this.workgroupCounterparties.forEach(async (recipient) => {
-                this.sendProtocolMessage(recipient, Opcode.Baseline, {
-                  err: "verification failed",
-                });
-              });
-              return Promise.reject("failed to verify");
-            }
-          }
-
-          // sign state transition
-          const signature = (
-            await this.signMessage(
-              vault.id!,
-              this.babyJubJub?.id!,
-              payload.hash
-            )
-          ).signature;
-          payload.signatures.push(signature);
-          this.workgroupCounterparties.forEach(async (recipient) => {
-            this.sendProtocolMessage(recipient, Opcode.Baseline, payload);
-          });
-        } else {
-          // create state transition commitment
-          payload.result = await this.generateProof(
-            "modify_state",
-            JSON.parse(msg.payload.toString())
-          );
-          const publicInputs = []; // FIXME
-          const value = ""; // FIXME
-
-          const resp = this.requestMgr(Mgr.Bob, "baseline_verify", [
-            msg.sender,
-            this.contracts["shield"].address,
-            payload.result.proof.proof,
-            publicInputs,
-            value,
-          ])
-            .then((res: any) => res)
-            .catch(() => undefined);
-
-          console.log("TODOTODOTODOTODO");
-          console.log(JSON.stringify(resp, undefined, 2));
-          const leaf = new MerkleTreeNode("undefined", 240); //resp!.commitment as MerkleTreeNode;
-          console.log("TODOTODOTODOTODO");
-          return;
-
-          if (leaf) {
-            console.log(`inserted leaf... ${leaf}`);
-            // @TODO:: Replace this with commit-mgr
-            payload.sibling_path = (
-              await this.baseline!.getProof(msg.shield, leaf.location())
-            ).map((node) => node.location());
-            payload.sibling_path?.push(leaf.index);
-            this.workgroupCounterparties.forEach(async (recipient) => {
-              await this.sendProtocolMessage(
-                recipient,
-                Opcode.Baseline,
-                payload
-              );
-            });
-          } else {
-            return Promise.reject("failed to insert leaf");
-          }
-        }
-      } else if (payload.signature) {
-        console.log(
-          `NOOP!!! received signature in BLINE protocol message: ${payload.signature}`
-        );
-      }
-    } else if (msg.opcode === Opcode.Join) {
+    if (msg.opcode === Opcode.Join) {
       const payload = JSON.parse(msg.payload.toString());
       const messagingEndpoint = await this.resolveMessagingEndpoint(
         payload.address
@@ -623,7 +491,6 @@ export class ParticipantStack {
       this.natsBearerTokens[messagingEndpoint] =
         payload.authorized_bearer_token;
     } else if (msg.opcode === Opcode.Availability) {
-
       // Message was sent and we're currently in the subscription distribution phase;
       // this happens on the supplier's side. Time to handle the incoming request.
       // Opcode.Availability assumes a specific structure to a message
@@ -641,7 +508,7 @@ export class ParticipantStack {
       //}
 
       let message_payload = JSON.parse(msg.payload.toString());
-			console.log(JSON.stringify(message_payload, undefined, 2));
+      console.log(JSON.stringify(message_payload, undefined, 2));
 
       // Check if received of the Availability call is the WFOperator.
       if (
@@ -654,14 +521,20 @@ export class ParticipantStack {
           "-- Availability response received from Supplier. Adding to registry."
         );
         this.availabilityData[msg.sender] = message_payload.availability;
-				console.log(`Current registry: ${JSON.stringify(this.availabilityData, undefined, 2)}`);
+        console.log(
+          `Current registry: ${JSON.stringify(
+            this.availabilityData,
+            undefined,
+            2
+          )}`
+        );
 
         // Make assumption that for this part we just have a single supplier, in reality multiple
         // suppliers process the initial request and we receive, multiple availabilities. This
         // function will choose the best availability for our use-case. TODO::(Hamza) Implement
         // @-->>> Allignment and Selection
 
-				// @-->>> Notify selected suppliers that they've been chosen
+        // @-->>> Notify selected suppliers that they've been chosen
         //await this.sendProtocolMessage(optimal_supplier, Opcode.Baseline, {
         //  doc: {
         //    id: `${message_payload.id}`,
@@ -676,74 +549,81 @@ export class ParticipantStack {
       }
 
       console.log("-- Availability request received from Operator!");
-			// -- Each supplier
-			// 	Supplier generates new commitment using received mjCont compares this to the commitment in the tree
-			// 	Supplier, if commitment is valid, run Avail module
-			// 	Supplier then returns supCont[mjID, supplierID, AVA, price] to Initiator
-			// --
+      // -- Each supplier
+      // 	Supplier generates new commitment using received mjCont compares this to the commitment in the tree
+      // 	Supplier, if commitment is valid, run Avail module
+      // 	Supplier then returns supCont[mjID, supplierID, AVA, price] to Initiator
+      // --
 
-			// @-->>> Retrieve availability
+      // @-->>> Retrieve availability
 
-			// mjCont: {
-			// 	id: `${uuid4()}`,
-			// 	date: `${new Date().toDateString()}`,
-			// 	name: `Avail-001`,
-			// 	mj: JSON.stringify(maintenanceData) <<<-- Feed this into CommitmentGenerator
-			//  meta: JSON.stringify(commitmentMeta) <<<-- Feed this into the CommitmentGenerator
-			// }
+      // mjCont: {
+      // 	id: `${uuid4()}`,
+      // 	date: `${new Date().toDateString()}`,
+      // 	name: `Avail-001`,
+      // 	mj: JSON.stringify(maintenanceData) <<<-- Feed this into CommitmentGenerator
+      //  meta: JSON.stringify(commitmentMeta) <<<-- Feed this into the CommitmentGenerator
+      // }
 
-			// mj {
-			//   id: number;
-			//   wtId: string;
-			//   mJCode: string;
-			//   tw: number[];
-			//   reqs: ReqContent;
-			// }
+      // mj {
+      //   id: number;
+      //   wtId: string;
+      //   mJCode: string;
+      //   tw: number[];
+      //   reqs: ReqContent;
+      // }
 
-			// reqs =  {
-			//  spare: string;
-			//  vessel: string;
-			//  tech: number;
-			//  port: string;
-			//  taskLength: number;
-			//}
+      // reqs =  {
+      //  spare: string;
+      //  vessel: string;
+      //  tech: number;
+      //  port: string;
+      //  taskLength: number;
+      //}
 
-			const job = JSON.parse(message_payload.mjCont.mj.data);
-			const meta = JSON.parse(message_payload.mjCont.meta.data);
-	
-			// Generate commitment
-			const commitment = this.createCommitment(job, meta);
-			const commitmentHash = concatenateThenHash(
-				JSON.stringify(commitment, (_, key: any) => typeof key === "bigint" ? key.toString() : key));	
+      const job = JSON.parse(message_payload.mjCont.mj.data);
+      const meta = JSON.parse(message_payload.mjCont.meta.data);
 
-			// Retrieve the latest entry from the merkle tree.
-			const firstLeaf = (await this.requestMgr(
-			  Mgr.Alice,
-			  "baseline_getCommits",
-			  [this.contracts["shield"].address, 0, 5]
-			))[0];
+      // Generate commitment
+      const commitment = this.createCommitment(job, meta);
+      const commitmentHash = concatenateThenHash(
+        JSON.stringify(commitment, (_, key: any) =>
+          typeof key === "bigint" ? key.toString() : key
+        )
+      );
 
-			// Compare commitmentHash to our commitment
-			// Always assume that at this point we have just a single commitment.
-			// This assumption is supposed to be held true because we're working 
-			// with Opcode.Availability. The whole workflow is repeated for each job
-			// which in turn means that we're just dealing with Opcode.Availability
-			// once.
-			if(firstLeaf.hash !== commitmentHash) return;	
+      // Retrieve the latest entry from the merkle tree.
+      const firstLeaf = (
+        await this.requestMgr(Mgr.Alice, "baseline_getCommits", [
+          this.contracts["shield"].address,
+          0,
+          5,
+        ])
+      )[0];
 
-			// Assume that this Availability checker only retrieves data from the current supplier's
-			// database.
-			const supplierAvail: FileStructure = (await requestAvailability(
-				[SupplierType.TECHNICIAN], 
-				job.tw, 
-				job.reqs.taskLength
-			))[0];
+      // Compare commitmentHash to our commitment
+      // Always assume that at this point we have just a single commitment.
+      // This assumption is supposed to be held true because we're working
+      // with Opcode.Availability. The whole workflow is repeated for each job
+      // which in turn means that we're just dealing with Opcode.Availability
+      // once.
+      if (firstLeaf.hash !== commitmentHash) return;
 
-			console.log({
-				a: [3],
-				b: job.tw,
-				c: job.reqs.taskLength
-			});
+      // Assume that this Availability checker only retrieves data from the current supplier's
+      // database.
+      const supplierAvail: FileStructure = (
+        await requestAvailability(
+          [SupplierType.TECHNICIAN],
+          job.tw,
+          job.reqs.taskLength
+        )
+      )[0];
+
+      console.log({
+        a: [3],
+        b: job.tw,
+        c: job.reqs.taskLength,
+      });
 
       let payload = {
         id: `${message_payload.id}`,
@@ -764,7 +644,7 @@ export class ParticipantStack {
       this.workgroupCounterparties.forEach(async (recipient) => {
         this.sendProtocolMessage(recipient, Opcode.Availability, payload);
       });
-		}
+    }
   }
 
   // HACK!! workgroup/contracts should be synced via protocol
@@ -990,8 +870,8 @@ export class ParticipantStack {
     );
 
     const proof = await (async (program: any, witness: any, pk: any) => {
-			// Blank self out; if you don't do this Zokrates will error out.
-			// Make sure to restore self once the call to Zokrates is done.
+      // Blank self out; if you don't do this Zokrates will error out.
+      // Make sure to restore self once the call to Zokrates is done.
       const stateCapture = self;
       self = undefined as any;
       let proof = await this.zk?.generateProof(program, witness, pk);
@@ -1037,8 +917,11 @@ export class ParticipantStack {
       mkLC.lc1 = bigInt(0);
       mkLC.lc2 = bigInt(0);
     } else {
-			// If state == 1 it means that we have a single previous commits; this will always be found at leafIndex 0
-			const lastLeaf = this.requestMgr(Mgr.Bob, "baseline_getCommit", [meta.shieldAddr, 0]);
+      // If state == 1 it means that we have a single previous commits; this will always be found at leafIndex 0
+      const lastLeaf = this.requestMgr(Mgr.Bob, "baseline_getCommit", [
+        meta.shieldAddr,
+        0,
+      ]);
       //mkLC.lc1 = ethers.getCommit(meta.shieldAddr, leafIndexLC)[0]; //dit klopt nog niet maar komt in de buurt
       //mkLC.lc2 = ethers.getCommit(meta.shieldAddr, leafIndexLC)[1]; //dit klopt nog niet maar komt in de buurt. Ook moet wss de commitment string gesplitst worden voordat mkLC ingevoerd wordt.
     }
@@ -1560,7 +1443,7 @@ export class ParticipantStack {
     //		return artifacts!;
     //	})();
 
-		// @TODO::Hamza -- Perhaps try using Radish's key import script?
+    // @TODO::Hamza -- Perhaps try using Radish's key import script?
 
     const compilerOutput = JSON.parse(
       solidityCompile(
@@ -1707,14 +1590,14 @@ export class ParticipantStack {
     return trackedShield;
   }
 
-	async getReceipt(txHash: string): Promise<any> {
-		return await this.commitMgrApiBob.post("/jsonrpc").send({
-        jsonrpc: "2.0",
-        method: "eth_getTransactionReceipt",
-        params: [txHash],
-        id: 1,
-      });
-	}
+  async getReceipt(txHash: string): Promise<any> {
+    return await this.commitMgrApiBob.post("/jsonrpc").send({
+      jsonrpc: "2.0",
+      method: "eth_getTransactionReceipt",
+      params: [txHash],
+      id: 1,
+    });
+  }
 
   async deployWorkgroupContract(
     name: string,

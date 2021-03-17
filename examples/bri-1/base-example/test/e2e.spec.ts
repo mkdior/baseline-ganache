@@ -26,7 +26,7 @@ import { flattenDeep, hexToDec } from "../src/utils/utils";
 import {
   Job,
   Priority,
-	SupplierType,
+  SupplierType,
   VerifierInterface,
   CommitmentMetaData,
 } from "../src/mods/types";
@@ -287,11 +287,11 @@ describe("baseline", () => {
 
           let maintenanceData: Job[] = [];
           let commitments: VerifierInterface[] = [];
-					let commitmentMeta: CommitmentMetaData;
+          let commitmentMeta: CommitmentMetaData;
           let proofs: any[] = [];
           let verifierAddress: string;
           let shieldAddress: string;
-					let supplierTToAddressMap: { [key: string]: SupplierType } = {};
+          let supplierTToAddressMap: { [key: string]: SupplierType } = {};
 
           before(async () => {
             verifierAddress = (
@@ -321,13 +321,13 @@ describe("baseline", () => {
             const commitment = bobApp.createCommitment(job, commitmentMeta);
             commitments.push(commitment);
 
-						// Ensure that during this workflow we have a reference to the current (single) job.
-						// @TODO::Hamza -- Just pop this off so that we can still use the other jobs later.
-						maintenanceData = [job];
+            // Ensure that during this workflow we have a reference to the current (single) job.
+            // @TODO::Hamza -- Just pop this off so that we can still use the other jobs later.
+            maintenanceData = [job];
 
-						// @-->>> Test thing out in this area prior to proof generation for time savings
-						
-						// #-->>>
+            // @-->>> Test thing out in this area prior to proof generation for time savings
+
+            // #-->>>
 
             assert(commitment);
           });
@@ -420,48 +420,63 @@ describe("baseline", () => {
               [shieldAddress, 0, 5]
             );
 
-            assert(treeEntries.length > 0, "Alice's merkle tree should not be empty after Bob's insertion.");
+            assert(
+              treeEntries.length > 0,
+              "Alice's merkle tree should not be empty after Bob's insertion."
+            );
           });
 
-					it("should determine which suppliers to contact for the currently selected maintenance job", async () => {
-						// reqExpander returns an array of all needed supplier types.
-						// In this test-suite we're assuming that Alice is always the correct and only supplier.
-						const expReqs = reqExpander(maintenanceData);	
-						const counterParties = bobApp.getWorkgroupCounterparties();
+          it("should determine which suppliers to contact for the currently selected maintenance job", async () => {
+            // reqExpander returns an array of all needed supplier types.
+            // In this test-suite we're assuming that Alice is always the correct and only supplier.
+            const expReqs = reqExpander(maintenanceData);
+            const counterParties = bobApp.getWorkgroupCounterparties();
 
-						assert(Object.keys(expReqs).length > 0, "This job has no required suppliers.");
-						assert(counterParties.length > 0, "This workgroup has no counterparties.");
-						
-						// Assuming that we have a single counterparty
-						supplierTToAddressMap = {
-							[counterParties[0]]: (Object.values(expReqs)[0])[0]
-						};
+            assert(
+              Object.keys(expReqs).length > 0,
+              "This job has no required suppliers."
+            );
+            assert(
+              counterParties.length > 0,
+              "This workgroup has no counterparties."
+            );
 
-						assert(Object.keys(supplierTToAddressMap).length > 0, "No mapping between an address and a supplier type could be found.");
-					});
+            // Assuming that we have a single counterparty
+            supplierTToAddressMap = {
+              [counterParties[0]]: Object.values(expReqs)[0][0],
+            };
 
-					// Send MJCont to Supplier
-					it("should send the initiating availability request to the supplers", async() => {		
-						const uuid4 = require('uuid4');
-						for (const [supplier, stype] of Object.entries(supplierTToAddressMap)) {	
-							console.log(`Sending Availability check to ${supplier} of type ${stype}`);
-							await bobApp.sendProtocolMessage(supplier, Opcode.Availability, {
-								mjCont: {
-									id: `${uuid4()}`,
-									date: `${new Date().toDateString()}`,
-									name: `Avail-001`,
-									intention: Intention.Request,
-									mj:  { data: JSON.stringify(maintenanceData[0])},
-									meta: { data: JSON.stringify(commitmentMeta)}
-								},
-							});
-						}
-					});
-					
-					// Initiator receives set of supConts
-					// If supConts.count > No. of supp. needed
-						// Generate selection commitment and push to shield.
+            assert(
+              Object.keys(supplierTToAddressMap).length > 0,
+              "No mapping between an address and a supplier type could be found."
+            );
+          });
 
+          // Send MJCont to Supplier
+          it("should send the initiating availability request to the supplers", async () => {
+            const uuid4 = require("uuid4");
+            for (const [supplier, stype] of Object.entries(
+              supplierTToAddressMap
+            )) {
+              console.log(
+                `Sending Availability check to ${supplier} of type ${stype}`
+              );
+              await bobApp.sendProtocolMessage(supplier, Opcode.Availability, {
+                mjCont: {
+                  id: `${uuid4()}`,
+                  date: `${new Date().toDateString()}`,
+                  name: `Avail-001`,
+                  intention: Intention.Request,
+                  mj: { data: JSON.stringify(maintenanceData[0]) },
+                  meta: { data: JSON.stringify(commitmentMeta) },
+                },
+              });
+            }
+          });
+
+          // Initiator receives set of supConts
+          // If supConts.count > No. of supp. needed
+          // Generate selection commitment and push to shield.
         });
       });
     });
