@@ -1,0 +1,8 @@
+import "hashes/sha256/512bitPacked" as sha256packed
+def main(private field State, private field MJ_ID, private field SupplierID, private field DocHash1, private field DocHash2, private field ContractH1, private field ContractH2, private field LC1, private field LC2, private field NC1, private field NC2) -> (field, field):
+
+		field Z = State + MJ_ID + SupplierID + DocHash1 + DocHash2 + ContractH1 + ContractH2 + LC1 + LC2 + NC1 + NC2
+
+    assert(Z != NC2)
+    
+    return Z, Z
