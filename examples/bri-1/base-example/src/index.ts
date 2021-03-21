@@ -82,13 +82,13 @@ import { requestAvailability } from "./mods/avail/avail";
 
 const baselineProtocolMessageSubject = "baseline.inbound";
 
-const baselineDocumentSource = "./src/zkp/src";
-const baselineDocumentCircuitPath = "./src/zkp/artifacts/stateVerifierSHA";
+//const baselineDocumentSource = "./src/zkp/src/stateVerifier.zok";
+//const baselineDocumentCircuitPath = "./src/zkp/artifacts/stateVerifierSHA";
+//const baselineKeys = "./src/zkp/artifacts/stateVerifierSHA/keys";
 
-// These are currently not being directly due to the size of the pkey
-// proving.key
-// verification.key
-const baselineKeys = "./src/zkp/artifacts/stateVerifierSHA/keys";
+const baselineDocumentSource = "./src/zkp/src/dummyVerifier.zok";
+const baselineDocumentCircuitPath = "./src/zkp/artifacts/dummyVerifier";
+const baselineKeys = "./src/zkp/artifacts/dummyVerifier/keys";
 
 const zokratesImportResolver = (_: any, path: any) => {
   let zokpath = `../../../lib/circuits/${path}`;
@@ -1697,7 +1697,7 @@ export class ParticipantStack {
 
     console.log(
       require("fs")
-        .readFileSync(`${baselineDocumentSource}/stateVerifier.zok`)
+        .readFileSync(`${baselineDocumentSource}`)
         .toString()
     );
 
@@ -1717,7 +1717,7 @@ export class ParticipantStack {
         // @TODO::Hamza Exchange proving key!
         zkSource:
           require("fs").readFileSync(
-            `${baselineDocumentSource}/stateVerifier.zok`
+            `${baselineDocumentSource}`
           ) || "0x0",
       },
     };

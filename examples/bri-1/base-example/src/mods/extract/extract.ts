@@ -164,7 +164,7 @@ export const jobCanBeStarted = (
 ): boolean => {
   if (Object.keys(suppliers).length === 0) return false;
   // First get needed suppliers for the job
-  const reqSupps: SupplierType[] = reqExpander([job])[`${job.mJCode}`];
+  const reqSupps: SupplierType[] = reqExpander([job])[job.id];
 
   if (reqSupps.length === 0) return false;
 

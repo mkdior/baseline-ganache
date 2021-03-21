@@ -36,6 +36,14 @@ import {
   reqExpander,
   jobCanBeStarted,
 } from "../src/mods/extract/extract";
+
+import {
+  createUniqueSets,
+  formatUniqueSets,
+  findOverlappingDay,
+  partitionSuppliers,
+} from "../src/mods/allign/allign";
+
 import { Mgr } from "./utils-ganache";
 import { ethers as Eth } from "ethers";
 
@@ -478,6 +486,8 @@ describe("baseline", () => {
                   meta: { data: JSON.stringify(commitmentMeta) },
                 },
               });
+							
+							await promisedTimeout(20000);
             }
           });
 
@@ -486,13 +496,14 @@ describe("baseline", () => {
             // in order to actually start this maintenance job since we genrally also
             // want to generate additional supplier sets in case something goes wrong
             // with the first generated set.
-            await promisedTimeout(10000);
-
+					
             // Assert that we have all needed supplier for this job.
             const canStart = jobCanBeStarted(
               maintenanceData[0],
               bobApp.getAvailableSuppliers()
             );
+
+						console.log(`can start: ${canStart}`);
 
             assert(canStart);
           });
@@ -509,6 +520,44 @@ describe("baseline", () => {
             //let verifierAddress: string;
             //let shieldAddress: string;
             //let supplierTToAddressMap: { [key: string]: SupplierType } = {};
+            const { reqs } = maintenanceData[0] || undefined;
+
+            assert(reqs, "requirements should not be undefined.");
+
+            // Flatten the suppliers into a single array and change their ID to the supplier's Address
+            // @-->>> TODO::Hamza- Change the ID by default to the address of the supplier.
+            const condensedSuppliers = Object.entries(
+              bobApp.getAvailableSuppliers()
+            ).reduce((prev: any, curr: any) => {
+              curr[1]["_content"]["supplierId"] = curr[0];
+              return [...prev, curr[1]];
+            }, []);
+
+            // Find out which suppliers have overlapping days.
+            const [overlapContainer, overlapMetadata] = findOverlappingDay(
+              partitionSuppliers(condensedSuppliers)
+            );
+
+						console.log(`Overlap Container: \n ${JSON.stringify(overlapContainer, undefined, 2)}`);
+						console.log(`\n`);
+						console.log(`Overlap Metadata: \n ${JSON.stringify(overlapMetadata, undefined, 2)}`);
+
+            // Based on the available overlapping suppliers, generate unique sets.
+            const uniqueSets = createUniqueSets(overlapContainer);
+
+						console.log(`Generated unique sets: \n ${JSON.stringify(uniqueSets, undefined, 2)}`);
+						console.log(`\n`);
+
+            // Time to get the optimal supplier set.
+            const finalSet = formatUniqueSets(
+              uniqueSets,
+              overlapMetadata,
+              reqs
+            );
+
+						console.log(`Final set used for commitment generating: \n ${JSON.stringify(finalSet, undefined, 2)}`);
+						console.log(`\n`);
+
           });
         });
       });
