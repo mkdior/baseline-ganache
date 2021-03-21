@@ -1,5 +1,12 @@
 import { fileReader } from "../../utils/utils";
-import { Priority, Contents, Job, Req, SupplierType } from "../types";
+import {
+  Job,
+  Req,
+  Priority,
+  Contents,
+  SupplierType,
+  FileStructure,
+} from "../types";
 
 let MJcodes: Req = {
   11: {
@@ -148,4 +155,34 @@ export const reqExpander = (jobs: Job[]): { [id: string]: SupplierType[] } => {
   }
 
   return reqSupps;
+};
+
+// Checks if given job can be started with given suppliers.
+export const jobCanBeStarted = (
+  job: Job,
+  suppliers: { [key: string]: FileStructure }
+): boolean => {
+  if (Object.keys(suppliers).length === 0) return false;
+  // First get needed suppliers for the job
+  const reqSupps: SupplierType[] = reqExpander([job])[`${job.mJCode}`];
+
+  if (reqSupps.length === 0) return false;
+
+  // Reduce entries in reqSupps [3, 3, 3] ->>> [3]
+  const singularSuppliers = reqSupps.reduce(
+    (pVal: SupplierType[], cVal: SupplierType) => {
+      if (!pVal.includes(cVal)) {
+        return [...pVal, cVal];
+      }
+      return [...pVal];
+    },
+    []
+  );
+
+  // If any of the suppliers dont exist in the job's suppliers list return.
+  for (const [_, value] of Object.entries(suppliers)) {
+    if (!singularSuppliers.includes(value._type)) return false;
+  }
+
+  return true;
 };

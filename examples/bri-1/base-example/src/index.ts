@@ -123,7 +123,7 @@ export class ParticipantStack {
   // Dummy storage for the WF Operators
   // Once availability data is sent back from a Supplier we will store
   // the data in [supplier_address] => [availability] format.
-  private availabilityData: { [key: string]: [number] } = {};
+  private availabilityData: { [key: string]: FileStructure } = {};
 
   private org?: any;
   private workgroup?: any;
@@ -302,6 +302,14 @@ export class ParticipantStack {
       commitAccount: this.commitAccount,
       commitAccounts: this.commitAccounts,
     };
+  }
+
+  getAvailableSuppliers(): { [key: string]: FileStructure } {
+    return this.availabilityData;
+  }
+
+  getAvailableSupplier(supplierAddr: string): FileStructure | undefined {
+    return this.availabilityData[supplierAddr] || undefined;
   }
 
   private async ganacheAccountSetup() {
@@ -520,7 +528,9 @@ export class ParticipantStack {
         console.log(
           "-- Availability response received from Supplier. Adding to registry."
         );
-        this.availabilityData[msg.sender] = message_payload.availability;
+        this.availabilityData[msg.sender] = JSON.parse(
+          message_payload.availability
+        );
         console.log(
           `Current registry: ${JSON.stringify(
             this.availabilityData,
@@ -918,31 +928,33 @@ export class ParticipantStack {
       mkLC.lc2 = bigInt(0);
     } else {
       // If state == 1 it means that we have a single previous commits; this will always be found at leafIndex 0
-      const lastLeaf: any[] = await this.requestMgr(Mgr.Bob, "baseline_getCommits", [
-        meta.shieldAddr,
-        0,
-				10
-      ]);
-			
-			console.log("Last 10 leaves");
-			console.log(JSON.stringify(lastLeaf, undefined, 2));
+      const lastLeaf: any[] = await this.requestMgr(
+        Mgr.Bob,
+        "baseline_getCommits",
+        [meta.shieldAddr, 0, 10]
+      );
 
-			let leafHash: string = lastLeaf[(lastLeaf.length - 1)].hash;
-			console.log("Last leaf's hash");
-			console.log(JSON.stringify(leafHash, undefined, 2));
+      console.log("Last 10 leaves");
+      console.log(JSON.stringify(lastLeaf, undefined, 2));
 
-			leafHash = leafHash.substr(2, leafHash.length);
-			console.log("LeafHash stripped");
-			console.log(lastLeaf);
+      let leafHash: string = lastLeaf[lastLeaf.length - 1].hash;
+      console.log("Last leaf's hash");
+      console.log(JSON.stringify(leafHash, undefined, 2));
 
-			const leafHashBN = bigInt(leafHash, 16).toString();
-			console.log("LeafHashBN string");
-			console.log(leafHashBN);
-			
-			// @-->>> To re-create the commitment hash from the merkle tree, you will have to first
-			// 
-      mkLC.lc1 = bigInt(leafHashBN.substr(0, (leafHashBN.length / 2)));
-      mkLC.lc2 = bigInt(leafHashBN.substr((leafHashBN.length / 2), leafHashBN.length));
+      leafHash = leafHash.substr(2, leafHash.length);
+      console.log("LeafHash stripped");
+      console.log(lastLeaf);
+
+      const leafHashBN = bigInt(leafHash, 16).toString();
+      console.log("LeafHashBN string");
+      console.log(leafHashBN);
+
+      // @-->>> To re-create the commitment hash from the merkle tree, you will have to first
+      //
+      mkLC.lc1 = bigInt(leafHashBN.substr(0, leafHashBN.length / 2));
+      mkLC.lc2 = bigInt(
+        leafHashBN.substr(leafHashBN.length / 2, leafHashBN.length)
+      );
     }
 
     if (state == bigInt(1) || state == bigInt(2) || state == bigInt(5)) {

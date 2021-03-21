@@ -61,3 +61,6 @@ typings/
 
 build/
 dist/
+
+# Custom files
+./core/alteredTypes/*

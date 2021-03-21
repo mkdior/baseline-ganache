@@ -31,7 +31,11 @@ import {
   CommitmentMetaData,
 } from "../src/mods/types";
 
-import { retrieveJobs, reqExpander } from "../src/mods/extract/extract";
+import {
+  retrieveJobs,
+  reqExpander,
+  jobCanBeStarted,
+} from "../src/mods/extract/extract";
 import { Mgr } from "./utils-ganache";
 import { ethers as Eth } from "ethers";
 
@@ -318,7 +322,10 @@ describe("baseline", () => {
               state: bigInt(0),
             };
 
-            const commitment = await bobApp.createCommitment(job, commitmentMeta);
+            const commitment = await bobApp.createCommitment(
+              job,
+              commitmentMeta
+            );
             commitments.push(commitment);
 
             // Ensure that during this workflow we have a reference to the current (single) job.
@@ -474,24 +481,35 @@ describe("baseline", () => {
             }
           });
 
-					it("should generate a selection commit after receiving all parties' availability", async () => {
-          	// Initiator receives set of supConts
-          	// If supConts.count > No. of supp. needed
-          	// Generate selection commitment and push to shield.
-						//
-          	//let maintenanceData: Job[] = [];
-          	//let commitments: VerifierInterface[] = [];
-          	//let commitmentMeta: CommitmentMetaData;
-          	//let proofs: any[] = [];
-          	//let verifierAddress: string;
-          	//let shieldAddress: string;
-          	//let supplierTToAddressMap: { [key: string]: SupplierType } = {};
+          it("should wait for some time to receive all responses from all suppliers", async () => {
+            // In this case we'd have a base threshold which we would need to pass
+            // in order to actually start this maintenance job since we genrally also
+            // want to generate additional supplier sets in case something goes wrong
+            // with the first generated set.
+            await promisedTimeout(10000);
 
-						await promisedTimeout(20000);
+            // Assert that we have all needed supplier for this job.
+            const canStart = jobCanBeStarted(
+              maintenanceData[0],
+              bobApp.getAvailableSuppliers()
+            );
 
+            assert(canStart);
+          });
 
-
-					});
+          it("should generate a selection commit after receiving all parties' availability", async () => {
+            // Initiator receives set of supConts
+            // If supConts.count > No. of supp. needed
+            // Generate selection commitment and push to shield.
+            //
+            //let maintenanceData: Job[] = [];
+            //let commitments: VerifierInterface[] = [];
+            //let commitmentMeta: CommitmentMetaData;
+            //let proofs: any[] = [];
+            //let verifierAddress: string;
+            //let shieldAddress: string;
+            //let supplierTToAddressMap: { [key: string]: SupplierType } = {};
+          });
         });
       });
     });
