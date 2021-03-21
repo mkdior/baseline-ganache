@@ -1695,12 +1695,6 @@ export class ParticipantStack {
     // Decode invite and reconstruct
     let decodedInvite = jwt.decode(inviteToken) as { [key: string]: any };
 
-    console.log(
-      require("fs")
-        .readFileSync(`${baselineDocumentSource}`)
-        .toString()
-    );
-
     decodedInvite.prvd.data.params = {
       erc1820_registry_contract_address: this.ganacheContracts[
         "erc1820-registry"
@@ -1716,9 +1710,7 @@ export class ParticipantStack {
       zk_data: {
         // @TODO::Hamza Exchange proving key!
         zkSource:
-          require("fs").readFileSync(
-            `${baselineDocumentSource}`
-          ) || "0x0",
+          require("fs").readFileSync(`${baselineDocumentSource}`) || "0x0",
       },
     };
 

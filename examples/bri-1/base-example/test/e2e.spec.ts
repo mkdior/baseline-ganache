@@ -298,11 +298,15 @@ describe("baseline", () => {
           const bigInt = require("big-integer");
 
           let maintenanceData: Job[] = [];
-          let commitments: VerifierInterface[] = [];
-          let commitmentMeta: CommitmentMetaData;
+          let finalSelection: any = {};
+
           let proofs: any[] = [];
-          let verifierAddress: string;
+          let commitmentMeta: CommitmentMetaData;
+          let commitments: VerifierInterface[] = [];
+
           let shieldAddress: string;
+          let verifierAddress: string;
+
           let supplierTToAddressMap: { [key: string]: SupplierType } = {};
 
           before(async () => {
@@ -486,8 +490,8 @@ describe("baseline", () => {
                   meta: { data: JSON.stringify(commitmentMeta) },
                 },
               });
-							
-							await promisedTimeout(20000);
+
+              await promisedTimeout(20000);
             }
           });
 
@@ -496,30 +500,19 @@ describe("baseline", () => {
             // in order to actually start this maintenance job since we genrally also
             // want to generate additional supplier sets in case something goes wrong
             // with the first generated set.
-					
+
             // Assert that we have all needed supplier for this job.
             const canStart = jobCanBeStarted(
               maintenanceData[0],
               bobApp.getAvailableSuppliers()
             );
 
-						console.log(`can start: ${canStart}`);
+            console.log(`can start: ${canStart}`);
 
             assert(canStart);
           });
 
-          it("should generate a selection commit after receiving all parties' availability", async () => {
-            // Initiator receives set of supConts
-            // If supConts.count > No. of supp. needed
-            // Generate selection commitment and push to shield.
-            //
-            //let maintenanceData: Job[] = [];
-            //let commitments: VerifierInterface[] = [];
-            //let commitmentMeta: CommitmentMetaData;
-            //let proofs: any[] = [];
-            //let verifierAddress: string;
-            //let shieldAddress: string;
-            //let supplierTToAddressMap: { [key: string]: SupplierType } = {};
+          it("should generate an optimal selection after receiving all parties' availability", async () => {
             const { reqs } = maintenanceData[0] || undefined;
 
             assert(reqs, "requirements should not be undefined.");
@@ -538,26 +531,51 @@ describe("baseline", () => {
               partitionSuppliers(condensedSuppliers)
             );
 
-						console.log(`Overlap Container: \n ${JSON.stringify(overlapContainer, undefined, 2)}`);
-						console.log(`\n`);
-						console.log(`Overlap Metadata: \n ${JSON.stringify(overlapMetadata, undefined, 2)}`);
+            console.log(
+              `Overlap Container: \n ${JSON.stringify(
+                overlapContainer,
+                undefined,
+                2
+              )}`
+            );
+            console.log(`\n`);
+            console.log(
+              `Overlap Metadata: \n ${JSON.stringify(
+                overlapMetadata,
+                undefined,
+                2
+              )}`
+            );
 
             // Based on the available overlapping suppliers, generate unique sets.
             const uniqueSets = createUniqueSets(overlapContainer);
 
-						console.log(`Generated unique sets: \n ${JSON.stringify(uniqueSets, undefined, 2)}`);
-						console.log(`\n`);
+            console.log(
+              `Generated unique sets: \n ${JSON.stringify(
+                uniqueSets,
+                undefined,
+                2
+              )}`
+            );
+            console.log(`\n`);
 
             // Time to get the optimal supplier set.
+            //{
+            //	"supplierSet": [
+            //		"0xeED96d28a73623833C3a584253096cdf051a74aD"
+            //	],
+            //		"totalPrice": 1520,
+            //		"averageRating": 4
+            //}
             const finalSet = formatUniqueSets(
               uniqueSets,
               overlapMetadata,
               reqs
             );
 
-						console.log(`Final set used for commitment generating: \n ${JSON.stringify(finalSet, undefined, 2)}`);
-						console.log(`\n`);
+            finalSelection = finalSet;
 
+            assert(finalSelection.supplierSet.length >= 1);
           });
         });
       });
