@@ -519,141 +519,110 @@ export class ParticipantStack {
       console.log(JSON.stringify(message_payload, undefined, 2));
 
       // Check if received of the Availability call is the WFOperator.
-      if (
-        this.baselineConfig.initiator &&
-        message_payload.intention == Intention.Response
-      ) {
-        // We're the wind farm operator; entering this branch means we've actually received a response
-        // from some arbitrary supplier with availability data. Time to process said data.
+      if (Object.keys(message_payload).includes("MJ")) {
+        if (message_payload.MJ.intention === Intention.Response) {
+          // We're the wind farm operator; entering this branch means we've actually received a response
+          // from some arbitrary supplier with availability data. Time to process said data.
+          console.log("-- Availability response received from Supplier.");
+          this.availabilityData[msg.sender] = JSON.parse(
+            message_payload.MJ.availability
+          );
+
+          return;
+        } else if ((message_payload.MJ.intention = Intention.Request)) {
+          console.log("-- Availability request received from Operator.");
+          // -- Each supplier
+          // 	Supplier generates new commitment using received MJ compares this to the commitment in the tree
+          // 	Supplier, if commitment is valid, run Avail module
+          // 	Supplier then returns supCont[mjID, supplierID, AVA, price] to Initiator
+          // --
+
+          // @-->>> Retrieve availability
+
+          // MJ: {
+          // 	id: `${uuid4()}`,
+          // 	date: `${new Date().toDateString()}`,
+          // 	name: `Avail-001`,
+          // 	mj: JSON.stringify(maintenanceData) <<<-- Feed this into CommitmentGenerator
+          //  meta: JSON.stringify(commitmentMeta) <<<-- Feed this into the CommitmentGenerator
+          // }
+
+          // mj {
+          //   id: number;
+          //   wtId: string;
+          //   mJCode: string;
+          //   tw: number[];
+          //   reqs: ReqContent;
+          // }
+
+          // reqs =  {
+          //  spare: string;
+          //  vessel: string;
+          //  tech: number;
+          //  port: string;
+          //  taskLength: number;
+          //}
+
+          const job = JSON.parse(message_payload.MJ.mj.data);
+          const meta = JSON.parse(message_payload.MJ.meta.data);
+
+          // Generate commitment
+          const commitment = this.createCommitment(job, meta);
+          const commitmentHash = concatenateThenHash(
+            JSON.stringify(commitment, (_, key: any) =>
+              typeof key === "bigint" ? key.toString() : key
+            )
+          );
+
+          // Retrieve the latest entry from the merkle tree.
+          const firstLeaf = (
+            await this.requestMgr(Mgr.Alice, "baseline_getCommits", [
+              this.contracts["shield"].address,
+              0,
+              5,
+            ])
+          )[0];
+
+          // Compare commitmentHash to our commitment
+          // Always assume that at this point we have just a single commitment.
+          // This assumption is supposed to be held true because we're working
+          // with Opcode.Availability. The whole workflow is repeated for each job
+          // which in turn means that we're just dealing with Opcode.Availability
+          // once.
+          if (firstLeaf.hash !== commitmentHash) return;
+
+          // Assume that this Availability checker only retrieves data from the current supplier's
+          // database.
+          const supplierAvail: FileStructure = (
+            await requestAvailability(
+              [SupplierType.TECHNICIAN],
+              job.tw,
+              job.reqs.taskLength
+            )
+          )[0];
+
+          // Send the availability data back to the initiator.
+          this.workgroupCounterparties.forEach(async (recipient) => {
+            this.sendProtocolMessage(recipient, Opcode.Availability, {
+              MJ: {
+                id: `${message_payload.MJ.id}`,
+                intention: `${Intention.Response}`,
+                date: `${new Date().toDateString()}`,
+                availability: `${JSON.stringify(supplierAvail)}`,
+              },
+            });
+          });
+        }
+      } else if (Object.keys(message_payload).includes("NS")) {
+        console.log("I've been notified!");
+        const vOI = JSON.parse(message_payload.notifySuppliers);
+
         console.log(
-          "-- Availability response received from Supplier. Adding to registry."
+          `Address: ${vOI.selectedAddress} \n LeafIndex: ${vOI.leafIndex} \n SelectionRange: ${vOI.selectionRange}`
         );
-        this.availabilityData[msg.sender] = JSON.parse(
-          message_payload.availability
-        );
-        console.log(
-          `Current registry: ${JSON.stringify(
-            this.availabilityData,
-            undefined,
-            2
-          )}`
-        );
-
-        // Make assumption that for this part we just have a single supplier, in reality multiple
-        // suppliers process the initial request and we receive, multiple availabilities. This
-        // function will choose the best availability for our use-case. TODO::(Hamza) Implement
-        // @-->>> Allignment and Selection
-
-        // @-->>> Notify selected suppliers that they've been chosen
-        //await this.sendProtocolMessage(optimal_supplier, Opcode.Baseline, {
-        //  doc: {
-        //    id: `${message_payload.id}`,
-        //    date: `${new Date().toDateString()}`,
-        //    availability: this.availabilityData[optimal_supplier],
-        //    name: `Avail-001`,
-        //    url: `url/1`,
-        //  },
-        //});
-
-        return;
+      } else {
+        console.log("QUIT");
       }
-
-      console.log("-- Availability request received from Operator!");
-      // -- Each supplier
-      // 	Supplier generates new commitment using received mjCont compares this to the commitment in the tree
-      // 	Supplier, if commitment is valid, run Avail module
-      // 	Supplier then returns supCont[mjID, supplierID, AVA, price] to Initiator
-      // --
-
-      // @-->>> Retrieve availability
-
-      // mjCont: {
-      // 	id: `${uuid4()}`,
-      // 	date: `${new Date().toDateString()}`,
-      // 	name: `Avail-001`,
-      // 	mj: JSON.stringify(maintenanceData) <<<-- Feed this into CommitmentGenerator
-      //  meta: JSON.stringify(commitmentMeta) <<<-- Feed this into the CommitmentGenerator
-      // }
-
-      // mj {
-      //   id: number;
-      //   wtId: string;
-      //   mJCode: string;
-      //   tw: number[];
-      //   reqs: ReqContent;
-      // }
-
-      // reqs =  {
-      //  spare: string;
-      //  vessel: string;
-      //  tech: number;
-      //  port: string;
-      //  taskLength: number;
-      //}
-
-      const job = JSON.parse(message_payload.mjCont.mj.data);
-      const meta = JSON.parse(message_payload.mjCont.meta.data);
-
-      // Generate commitment
-      const commitment = this.createCommitment(job, meta);
-      const commitmentHash = concatenateThenHash(
-        JSON.stringify(commitment, (_, key: any) =>
-          typeof key === "bigint" ? key.toString() : key
-        )
-      );
-
-      // Retrieve the latest entry from the merkle tree.
-      const firstLeaf = (
-        await this.requestMgr(Mgr.Alice, "baseline_getCommits", [
-          this.contracts["shield"].address,
-          0,
-          5,
-        ])
-      )[0];
-
-      // Compare commitmentHash to our commitment
-      // Always assume that at this point we have just a single commitment.
-      // This assumption is supposed to be held true because we're working
-      // with Opcode.Availability. The whole workflow is repeated for each job
-      // which in turn means that we're just dealing with Opcode.Availability
-      // once.
-      if (firstLeaf.hash !== commitmentHash) return;
-
-      // Assume that this Availability checker only retrieves data from the current supplier's
-      // database.
-      const supplierAvail: FileStructure = (
-        await requestAvailability(
-          [SupplierType.TECHNICIAN],
-          job.tw,
-          job.reqs.taskLength
-        )
-      )[0];
-
-      console.log({
-        a: [3],
-        b: job.tw,
-        c: job.reqs.taskLength,
-      });
-
-      let payload = {
-        id: `${message_payload.mjCont.id}`,
-        intention: `${Intention.Response}`,
-        date: `${new Date().toDateString()}`,
-        availability: `${JSON.stringify(supplierAvail)}`,
-      };
-
-      console.log(
-        `Preparing to send a message back to the initiator: payload: ${JSON.stringify(
-          payload,
-          undefined,
-          2
-        )}`
-      );
-
-      // Send the availability data back to the initiator.
-      this.workgroupCounterparties.forEach(async (recipient) => {
-        this.sendProtocolMessage(recipient, Opcode.Availability, payload);
-      });
     }
   }
 
@@ -902,7 +871,7 @@ export class ParticipantStack {
   }
 
   async createCommitment(
-    mjCont: Job,
+    MJ: Job,
     meta: CommitmentMetaData,
     leafIndexLC?: number,
     supCont?: SuppContainer
@@ -995,7 +964,7 @@ export class ParticipantStack {
 
     // Initiate body of inputs for verfier.sol
     let verifierInp: VerifierInterface = {
-      mjID: mjCont.id,
+      mjID: MJ.id,
       state: state,
       supplierID: supCont.supplierID,
       docHash1: supCont.docHash1,

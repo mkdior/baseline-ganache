@@ -76,6 +76,12 @@ export interface CommitmentMetaData {
   state: bigint;
 }
 
+export interface SelectionMetaData {
+	leafIndex: number;
+	selectionRange: readonly [number, number];
+	selectedAddress: string;	
+}
+
 export interface VerifierInterface {
   mjID: number;
   state: bigint;

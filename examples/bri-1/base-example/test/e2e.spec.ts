@@ -28,6 +28,7 @@ import {
   Priority,
   SupplierType,
   VerifierInterface,
+  SelectionMetaData,
   CommitmentMetaData,
 } from "../src/mods/types";
 
@@ -294,6 +295,7 @@ describe("baseline", () => {
           let verifierAddress: string;
 
           let supplierTToAddressMap: { [key: string]: SupplierType } = {};
+          let sSuppliersMeta: SelectionMetaData[] = [];
 
           before(async () => {
             verifierAddress = (
@@ -468,7 +470,7 @@ describe("baseline", () => {
                 `Sending Availability check to ${supplier} of type ${stype}`
               );
               await bobApp.sendProtocolMessage(supplier, Opcode.Availability, {
-                mjCont: {
+                MJ: {
                   id: `${uuid4()}`,
                   date: `${new Date().toDateString()}`,
                   name: `Avail-001`,
@@ -573,7 +575,7 @@ describe("baseline", () => {
                 {
                   shieldAddr: commitmentMeta.shieldAddr,
                   verifierAddr: commitmentMeta.verifierAddr,
-                  state: bigInt(++currentLeaf),
+                  state: bigInt(1),
                 },
                 currentLeaf,
                 {
@@ -620,25 +622,49 @@ describe("baseline", () => {
                 []
               );
 
-              await bobApp
-                .requestMgr(Mgr.Bob, "baseline_verifyAndPush", [
-                  sender,
-                  shieldAddress,
-                  tempProofFlat,
-                  tempProofFlatInputs,
-                  concatenateThenHash(
-                    JSON.stringify(commitment, (_, key: any) =>
-                      typeof key === "bigint" ? key.toString() : key
-                    )
-                  ),
-                ])
-                .then(async (_: any) => {});
+              await bobApp.requestMgr(Mgr.Bob, "baseline_verifyAndPush", [
+                sender,
+                shieldAddress,
+                tempProofFlat,
+                tempProofFlatInputs,
+                concatenateThenHash(
+                  JSON.stringify(commitment, (_, key: any) =>
+                    typeof key === "bigint" ? key.toString() : key
+                  )
+                ),
+              ]);
+
+              sSuppliersMeta.push({
+                leafIndex: currentLeaf,
+                selectionRange: [1, selectedSuppliers.length],
+                selectedAddress: supplier,
+              });
 
               currentLeaf = currentLeaf++;
             }
 
-            assert(true);
+            assert(
+              sSuppliersMeta.length > 0,
+              "No metadata has been prepared for the selected suppliers."
+            );
           });
+
+          //it("should notify the suppliers' selection status", async () => {
+          ////    The supplier can rebuild the commitment for verification purposes
+          ////    in the following format:
+          ////
+          ////    Job,
+          ////    { shieldAddr, verifierAddr, 1 },
+          //// 		message.leafIndex,
+          ////    { Job.id, bigInt(myAddress, 16), bigInt(0), bigInt(0), bigInt(0), bigInt(0) }
+
+          //// @TODO -->>> Hamza -- Create new OpCode for notifying other parties.
+          //for (const supplier of sSuppliersMeta) {
+          //await bobApp.sendProtocolMessage(supplier.selectedAddress, Opcode.Availability, {
+          //NS: supplier
+          //});
+          //}
+          //});
         });
       });
     });
