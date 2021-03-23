@@ -3,7 +3,6 @@ import {
   IBlockchainService,
   IRegistry,
   IVault,
-  MerkleTreeNode,
   baselineServiceFactory,
   baselineProviderProvide,
 } from "@baseline-protocol/api";
@@ -63,7 +62,6 @@ import { IdentWrapper } from "../../../bri-2/commit-mgr/src/db/controllers/Ident
 import { NonceManager } from "@ethersproject/experimental";
 import {
   scrapeInvitationToken,
-  readBytes,
   generateChunks,
 } from "../test/utils";
 import { bnToBuf } from "./utils/utils";
@@ -84,11 +82,9 @@ const baselineProtocolMessageSubject = "baseline.inbound";
 
 //const baselineDocumentSource = "./src/zkp/src/stateVerifier.zok";
 //const baselineDocumentCircuitPath = "./src/zkp/artifacts/stateVerifierSHA";
-//const baselineKeys = "./src/zkp/artifacts/stateVerifierSHA/keys";
 
 const baselineDocumentSource = "./src/zkp/src/dummyVerifier.zok";
 const baselineDocumentCircuitPath = "./src/zkp/artifacts/dummyVerifier";
-const baselineKeys = "./src/zkp/artifacts/dummyVerifier/keys";
 
 const zokratesImportResolver = (_: any, path: any) => {
   let zokpath = `../../../lib/circuits/${path}`;
@@ -370,7 +366,7 @@ export class ParticipantStack {
     con: mongoose.Connection
   ): Promise<any> {
     for (var name of names) {
-      con.db.listCollections().toArray(async (err, collections) => {
+      con.db.listCollections().toArray(async (_, collections) => {
         if (collections && collections.length > 0) {
           for (var collection of collections) {
             if (collection.name === name) {
@@ -474,10 +470,6 @@ export class ParticipantStack {
         type: "organization-registry",
       },
     };
-
-    //for (const [key, value] of Object.entries(this.ganacheContracts)) {
-    //	console.log(`${key} address: ${(value as any)!.address}`);
-    //}
   }
 
   private async dispatchProtocolMessage(msg: ProtocolMessage): Promise<any> {
@@ -501,67 +493,26 @@ export class ParticipantStack {
     } else if (msg.opcode === Opcode.Availability) {
       // Message was sent and we're currently in the subscription distribution phase;
       // this happens on the supplier's side. Time to handle the incoming request.
-      // Opcode.Availability assumes a specific structure to a message
-      // {
-      //    start_day: 1~x
-      //    duration: 1~x
-      // }
-      // From this point on, since we're working locally, we can now connect with the ERP system
-      // to retrieve TM and do our availability check. After we've completed the availability check
-      // we send back the availability to the counterparty. TM = ParticipantStack.availabilityData
-
-      //{    *_* Payload format *_*
-      //        "id": "uuidv4()",
-      //        "date": "new Date()).toDateString()"
-      //}
 
       let message_payload = JSON.parse(msg.payload.toString());
-      console.log(JSON.stringify(message_payload, undefined, 2));
 
-      // Check if received of the Availability call is the WFOperator.
+			// If the payload under Opcode.Availability contains a key called MJ it means
+			// we're either trying to request availability of some supplier or reply to a
+			// request from the WFOperator.
       if (Object.keys(message_payload).includes("MJ")) {
         if (message_payload.MJ.intention === Intention.Response) {
           // We're the wind farm operator; entering this branch means we've actually received a response
           // from some arbitrary supplier with availability data. Time to process said data.
-          console.log("-- Availability response received from Supplier.");
           this.availabilityData[msg.sender] = JSON.parse(
             message_payload.MJ.availability
           );
-
-          return;
         } else if ((message_payload.MJ.intention = Intention.Request)) {
-          console.log("-- Availability request received from Operator.");
-          // -- Each supplier
-          // 	Supplier generates new commitment using received MJ compares this to the commitment in the tree
-          // 	Supplier, if commitment is valid, run Avail module
-          // 	Supplier then returns supCont[mjID, supplierID, AVA, price] to Initiator
-          // --
-
-          // @-->>> Retrieve availability
-
-          // MJ: {
-          // 	id: `${uuid4()}`,
-          // 	date: `${new Date().toDateString()}`,
-          // 	name: `Avail-001`,
-          // 	mj: JSON.stringify(maintenanceData) <<<-- Feed this into CommitmentGenerator
-          //  meta: JSON.stringify(commitmentMeta) <<<-- Feed this into the CommitmentGenerator
-          // }
-
-          // mj {
-          //   id: number;
-          //   wtId: string;
-          //   mJCode: string;
-          //   tw: number[];
-          //   reqs: ReqContent;
-          // }
-
-          // reqs =  {
-          //  spare: string;
-          //  vessel: string;
-          //  tech: number;
-          //  port: string;
-          //  taskLength: number;
-          //}
+          //  We're now in the supplier branch. If we're in here it means that the WFOperator has requested
+					//  our availability. The following tasks are executed by the supplier in this branch:
+          // 		Supplier generates new commitment using received MJ
+					//    Supplier compares this newly generated commitment to the last inserted leaf
+          // 		Supplier runs AVA module if commitments overlap
+          // 		Supplier then returns supCont[mjID, supplierID, AVA, price] to Initiator
 
           const job = JSON.parse(message_payload.MJ.mj.data);
           const meta = JSON.parse(message_payload.MJ.meta.data);
@@ -614,6 +565,9 @@ export class ParticipantStack {
           });
         }
       } else if (Object.keys(message_payload).includes("NS")) {
+				// If we're in this branch it means that we're trying to notify a supplier of the fact
+				// that he/she has been selected for the job. NS stands for `Notify Supplier`
+
         console.log("I've been notified!");
         const vOI = JSON.parse(message_payload.notifySuppliers);
 
@@ -746,18 +700,18 @@ export class ParticipantStack {
     return el.field(fieldBits || 128, 1, true);
   }
 
-  // Wrapper for commit-mgr requests
-  // baseline_getCommit => params => contractAddress, leafIndex
-  // baseline_getCommits => params => contractAddress, startLeafIndex, count
-  // baseline_getRoot => params => contractAddress
-  // baseline_getProof => params => contractAddress, leafIndex
-  // baseline_getTracked => params => NONE
-  // baseline_verifyAndPush => params => senderAddress, contractAddress, proof, publicInputs, newCommitment
-  // baseline_track => params => contractAddress
-  // baseline_untrack => params => contractAddress, prune
-  // baseline_verify => params => contractAddress, leafValue, siblingNodes
-
   async requestMgr(endpoint: Mgr, method: string, params: any): Promise<any> {
+		// Baseline-RPCs
+		// baseline_getCommit => params => contractAddress, leafIndex
+		// baseline_getCommits => params => contractAddress, startLeafIndex, count
+		// baseline_getRoot => params => contractAddress
+		// baseline_getProof => params => contractAddress, leafIndex
+		// baseline_getTracked => params => NONE
+		// baseline_verifyAndPush => params => senderAddress, contractAddress, proof, publicInputs, newCommitment
+		// baseline_track => params => contractAddress
+		// baseline_untrack => params => contractAddress, prune
+		// baseline_verify => params => contractAddress, leafValue, siblingNodes
+
     // Needed because each instance of commit-mgr can only track a single shield address.
     const ep =
       endpoint === Mgr.Bob ? this.commitMgrApiBob : this.commitMgrApiAlice;
@@ -793,31 +747,12 @@ export class ParticipantStack {
   }
 
   async generateProof(type: string, msg: any): Promise<any> {
-    const senderZkPublicKey = this.babyJubJub?.publicKey!;
-    const salt = msg.salt || rndHex(32);
-
-    let root: string | null = null;
     let args: any[] = [];
-
-    if (msg.sibling_path && msg.sibling_path.length > 0) {
-      const siblingPath = elementify(msg.sibling_path) as Element;
-      root = siblingPath[0].hex(64);
-    }
-
-    console.log(`generating ${type} proof...\n`, msg);
-    // @@TODO 703: Check use for senderZkpPublicKey.
-    // Check implementation for sibling path.
-    // Check use for salt.
-    // Check marshalling implementation.
-    // Check use for commitment at this point.
 
     switch (type) {
       case "genesis":
         args = msg.args;
         break;
-      case "modify_state":
-        break;
-
       default:
         throw new Error("invalid proof type");
     }
@@ -830,22 +765,14 @@ export class ParticipantStack {
       // Once a circuit has been created, it has to be synced
       // between all parties involved. This is an artifical "sync"
       await this.compileBaselineCircuit();
-
-      // In general, running another setup doesn't work since it
-      // will generate a new keypair. This can't be done in our cases
-      // since the verifier deployed by bob contains the genesis-
-      // generated VK. This means that if we want to submit our proof
-      // to the same verifier ( which is mandatory ), we will need the
-      // PK from Bob's setup. This is now sent through the invite.
     }
 
-    //const proof = await this.zk?.generateProof(
-    //  this.baselineCircuitArtifacts?.program,
-    //  (await this.zk?.computeWitness(this.baselineCircuitArtifacts!, args))
-    //    .witness,
-    //  this.baselineCircuitSetupArtifacts?.keypair?.pk
-    //);
-
+    // In general, running another setup doesn't work since it
+    // will generate a new keypair. This can't be done in our cases
+    // since the verifier deployed by bob contains the genesis-
+    // generated VK. This means that if we want to submit our proof
+    // to the same verifier ( which is mandatory ), we will need the
+    // PK from Bob's setup. This is now sent through the invite.
     const fs = require("fs");
     const witness = (await this.zk?.computeWitness(
       this.baselineCircuitArtifacts!,
@@ -915,8 +842,6 @@ export class ParticipantStack {
 
       const leafHashBN = bigInt(leafHash, 16).toString();
 
-      // @-->>> To re-create the commitment hash from the merkle tree, you will have to first
-      //
       mkLC.lc1 = bigInt(leafHashBN.substr(0, leafHashBN.length / 2));
       mkLC.lc2 = bigInt(
         leafHashBN.substr(leafHashBN.length / 2, leafHashBN.length)
@@ -1000,7 +925,6 @@ export class ParticipantStack {
 
     let inp14 = new Uint8Array([...in1, ...in2, ...in3, ...in4]);
     let hash1 = new sha.sha256().update(inp14).digest("hex"); //create hex hash1 of commitment
-    //console.log(hash1.slice(0, 32), hash1.slice(32, 64));
     let left1 = bigInt(hash1.slice(0, 32), 16).value; //create BigInt part of hash1
     let right1 = bigInt(hash1.slice(32, 64), 16).value; //create BigInt part of hash1
 
@@ -1012,7 +936,6 @@ export class ParticipantStack {
 
     let inp58 = new Uint8Array([...in5, ...in6, ...in7, ...in8]);
     let hash2 = new sha.sha256().update(inp58).digest("hex"); //create hex hash2 of commitment
-    //console.log(hash2.slice(0, 32), hash2.slice(32, 64));
     let left2 = bigInt(hash2.slice(0, 32), 16).value; //create BigInt part of hash2
     let right2 = bigInt(hash2.slice(32, 64), 16).value; //create BigInt part of hash2
 
@@ -1023,7 +946,6 @@ export class ParticipantStack {
     let comar4 = bnToBuf("" + right2);
     let comarr = new Uint8Array([...comar1, ...comar2, ...comar3, ...comar4]);
     let hexhash = new sha.sha256().update(comarr).digest("hex");
-    //console.log(hexhash.slice(0, 32), hexhash.slice(32, 64));
     let newcom1 = bigInt(hexhash.slice(0, 32), 16).value;
     let newcom2 = bigInt(hexhash.slice(32, 64), 16).value;
 
@@ -1053,7 +975,7 @@ export class ParticipantStack {
     return messagingEndpoint;
   }
 
-  // bearer auth tokens authorized by third parties are keyed on the messaging endpoint to which access is authorized
+  // Bearer auth tokens authorized by third parties are keyed on the messaging endpoint to which access is authorized
   async resolveNatsBearerToken(addr: string): Promise<string> {
     const endpoint = await this.resolveMessagingEndpoint(addr);
     if (!endpoint) {
@@ -1064,7 +986,7 @@ export class ParticipantStack {
     return this.natsBearerTokens[endpoint];
   }
 
-  // this will accept recipients (string[]) for multi-party use-cases
+  // This will accept recipients (string[]) for multi-party use-cases
   async sendProtocolMessage(
     recipient: string,
     opcode: Opcode,
@@ -1155,8 +1077,7 @@ export class ParticipantStack {
       JSON.stringify(this.capabilities?.getBaselineRegistryContracts())
     );
 
-    const contractParams = registryContracts[2]; // "shuttle" launch contract
-    // ^^ FIXME -- load from disk -- this is a wrapper to deploy the OrgRegistry contract
+    const contractParams = registryContracts[2];
 
     await this.deployWorkgroupContract("Shuttle", "registry", contractParams);
     await this.requireWorkgroupContract("organization-registry");
@@ -1400,8 +1321,7 @@ export class ParticipantStack {
     // we're using zokrates-CLI to pre-compile and generate everything.
 
     // Perform trusted setup and deploy verifier/shield contract
-    //console.log(this.baselineCircuitArtifacts);
-    //const setupArtifacts: IZKSnarkTrustedSetupArtifacts =
+    //  const setupArtifacts: IZKSnarkTrustedSetupArtifacts =
     //	await (async (): Promise<IZKSnarkTrustedSetupArtifacts> => {
     //		const stateCapture = self;
     //		self = (undefined as any);
@@ -1452,7 +1372,7 @@ export class ParticipantStack {
 
     const shieldContract = JSON.parse(
       readFileSync("../../bri-2/contracts/artifacts/Shield.json").toString()
-    ); // #2
+    );
 
     // Begin Verifier Contract
     const verifierAddress = await this.contractService.compileContracts([
