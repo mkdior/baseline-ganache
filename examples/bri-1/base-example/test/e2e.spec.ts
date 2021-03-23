@@ -405,9 +405,9 @@ describe("baseline", () => {
               ),
             ]);
 
-						const root = await bobApp.requestMgr(Mgr.Bob, "baseline_getRoot", [
-              shieldAddress,
-            ]).then((res: any) => res.toString());
+            const root = await bobApp
+              .requestMgr(Mgr.Bob, "baseline_getRoot", [shieldAddress])
+              .then((res: any) => res.toString());
 
             assert(
               root.toString() !==
@@ -632,9 +632,7 @@ describe("baseline", () => {
                     )
                   ),
                 ])
-                .then(async (_: any) => {
-
-						});
+                .then(async (_: any) => {});
 
               currentLeaf = currentLeaf++;
             }

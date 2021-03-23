@@ -806,15 +806,15 @@ export class ParticipantStack {
           return Promise.reject(res.error || "Status on request was NOT 200");
         }
         try {
-					const result = JSON.parse(res.text).result;
+          const result = JSON.parse(res.text).result;
 
-					if (Object.keys(result).includes("txHash")) {
-						// Ensure that if we have a txHash, we wait for the TX
-						// to finish. This means we don't have to use time-outs.
-						const provider = new Eth.providers.JsonRpcProvider();
-						const txHash = result.txHash;
-						await provider.waitForTransaction(txHash);
-					}
+          if (Object.keys(result).includes("txHash")) {
+            // Ensure that if we have a txHash, we wait for the TX
+            // to finish. This means we don't have to use time-outs.
+            const provider = new Eth.providers.JsonRpcProvider();
+            const txHash = result.txHash;
+            await provider.waitForTransaction(txHash);
+          }
 
           return Promise.resolve(result);
         } catch (error) {
