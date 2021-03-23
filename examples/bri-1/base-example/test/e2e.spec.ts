@@ -649,22 +649,22 @@ describe("baseline", () => {
             );
           });
 
-          //it("should notify the suppliers' selection status", async () => {
-          ////    The supplier can rebuild the commitment for verification purposes
-          ////    in the following format:
-          ////
-          ////    Job,
-          ////    { shieldAddr, verifierAddr, 1 },
-          //// 		message.leafIndex,
-          ////    { Job.id, bigInt(myAddress, 16), bigInt(0), bigInt(0), bigInt(0), bigInt(0) }
+          it("should notify the suppliers' selection status", async () => {
+          //    The supplier can rebuild the commitment for verification purposes
+          //    in the following format:
+          //
+          //    Job,
+          //    { shieldAddr, verifierAddr, 1 },
+          // 		message.leafIndex,
+          //    { Job.id, bigInt(myAddress, 16), bigInt(0), bigInt(0), bigInt(0), bigInt(0) }
 
-          //// @TODO -->>> Hamza -- Create new OpCode for notifying other parties.
-          //for (const supplier of sSuppliersMeta) {
-          //await bobApp.sendProtocolMessage(supplier.selectedAddress, Opcode.Availability, {
-          //NS: supplier
-          //});
-          //}
-          //});
+          // @TODO -->>> Hamza -- Create new OpCode for notifying other parties.
+          for (const supplier of sSuppliersMeta) {
+          await bobApp.sendProtocolMessage(supplier.selectedAddress, Opcode.Availability, {
+          NS: supplier
+          });
+          }
+          });
         });
       });
     });

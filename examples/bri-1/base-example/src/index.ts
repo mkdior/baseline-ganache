@@ -60,10 +60,7 @@ import mongoose from "mongoose";
 // Testing
 import { IdentWrapper } from "../../../bri-2/commit-mgr/src/db/controllers/Ident";
 import { NonceManager } from "@ethersproject/experimental";
-import {
-  scrapeInvitationToken,
-  generateChunks,
-} from "../test/utils";
+import { scrapeInvitationToken, generateChunks } from "../test/utils";
 import { bnToBuf } from "./utils/utils";
 
 import { ContractMgr, Mgr } from "../test/utils-ganache";
@@ -496,9 +493,9 @@ export class ParticipantStack {
 
       let message_payload = JSON.parse(msg.payload.toString());
 
-			// If the payload under Opcode.Availability contains a key called MJ it means
-			// we're either trying to request availability of some supplier or reply to a
-			// request from the WFOperator.
+      // If the payload under Opcode.Availability contains a key called MJ it means
+      // we're either trying to request availability of some supplier or reply to a
+      // request from the WFOperator.
       if (Object.keys(message_payload).includes("MJ")) {
         if (message_payload.MJ.intention === Intention.Response) {
           // We're the wind farm operator; entering this branch means we've actually received a response
@@ -508,9 +505,9 @@ export class ParticipantStack {
           );
         } else if ((message_payload.MJ.intention = Intention.Request)) {
           //  We're now in the supplier branch. If we're in here it means that the WFOperator has requested
-					//  our availability. The following tasks are executed by the supplier in this branch:
+          //  our availability. The following tasks are executed by the supplier in this branch:
           // 		Supplier generates new commitment using received MJ
-					//    Supplier compares this newly generated commitment to the last inserted leaf
+          //    Supplier compares this newly generated commitment to the last inserted leaf
           // 		Supplier runs AVA module if commitments overlap
           // 		Supplier then returns supCont[mjID, supplierID, AVA, price] to Initiator
 
@@ -565,11 +562,10 @@ export class ParticipantStack {
           });
         }
       } else if (Object.keys(message_payload).includes("NS")) {
-				// If we're in this branch it means that we're trying to notify a supplier of the fact
-				// that he/she has been selected for the job. NS stands for `Notify Supplier`
+        // If we're in this branch it means that we're trying to notify a supplier of the fact
+        // that he/she has been selected for the job. NS stands for `Notify Supplier`
 
-        console.log("I've been notified!");
-        const vOI = JSON.parse(message_payload.notifySuppliers);
+        const vOI = message_payload.NS;
 
         console.log(
           `Address: ${vOI.selectedAddress} \n LeafIndex: ${vOI.leafIndex} \n SelectionRange: ${vOI.selectionRange}`
@@ -701,16 +697,16 @@ export class ParticipantStack {
   }
 
   async requestMgr(endpoint: Mgr, method: string, params: any): Promise<any> {
-		// Baseline-RPCs
-		// baseline_getCommit => params => contractAddress, leafIndex
-		// baseline_getCommits => params => contractAddress, startLeafIndex, count
-		// baseline_getRoot => params => contractAddress
-		// baseline_getProof => params => contractAddress, leafIndex
-		// baseline_getTracked => params => NONE
-		// baseline_verifyAndPush => params => senderAddress, contractAddress, proof, publicInputs, newCommitment
-		// baseline_track => params => contractAddress
-		// baseline_untrack => params => contractAddress, prune
-		// baseline_verify => params => contractAddress, leafValue, siblingNodes
+    // Baseline-RPCs
+    // baseline_getCommit => params => contractAddress, leafIndex
+    // baseline_getCommits => params => contractAddress, startLeafIndex, count
+    // baseline_getRoot => params => contractAddress
+    // baseline_getProof => params => contractAddress, leafIndex
+    // baseline_getTracked => params => NONE
+    // baseline_verifyAndPush => params => senderAddress, contractAddress, proof, publicInputs, newCommitment
+    // baseline_track => params => contractAddress
+    // baseline_untrack => params => contractAddress, prune
+    // baseline_verify => params => contractAddress, leafValue, siblingNodes
 
     // Needed because each instance of commit-mgr can only track a single shield address.
     const ep =
