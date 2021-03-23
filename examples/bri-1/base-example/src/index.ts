@@ -734,9 +734,6 @@ export class ParticipantStack {
     // @TODO::Hamza Remove this once #299 has been merged
     //this.baselineCircuitSetupArtifacts = invite.prvd.data.params.zk_data;
 
-    console.log(
-      `Trying to track shield from Alice under address: ${shieldAddr}`
-    );
     const trackedShield = await this.requestMgr(Mgr.Alice, "baseline_track", [
       shieldAddr,
     ])
@@ -746,13 +743,13 @@ export class ParticipantStack {
       })
       .catch((err: any) => {
         console.log(
-          `Error while trying to track shield contract. \n Error details: ${err}`
+          `Alice: Error while trying to track shield contract. \n Error details: ${err}`
         );
         return undefined;
       });
 
     if (!trackedShield) {
-      console.log("WARNING: failed to track baseline shield contract");
+      console.log("Alice: WARNING: failed to track baseline shield contract");
     } else {
       console.log(
         `${this.baselineConfig.orgName} tracking shield under the address: ${shieldAddr}`
@@ -804,12 +801,22 @@ export class ParticipantStack {
         params: params,
         id: 1,
       })
-      .then((res: any) => {
+      .then(async (res: any) => {
         if (res.status !== 200) {
           return Promise.reject(res.error || "Status on request was NOT 200");
         }
         try {
-          return Promise.resolve(JSON.parse(res.text).result);
+					const result = JSON.parse(res.text).result;
+
+					if (Object.keys(result).includes("txHash")) {
+						// Ensure that if we have a txHash, we wait for the TX
+						// to finish. This means we don't have to use time-outs.
+						const provider = new Eth.providers.JsonRpcProvider();
+						const txHash = result.txHash;
+						await provider.waitForTransaction(txHash);
+					}
+
+          return Promise.resolve(result);
         } catch (error) {
           return Promise.reject(error);
         }
@@ -934,20 +941,10 @@ export class ParticipantStack {
         [meta.shieldAddr, 0, 10]
       );
 
-      console.log("Last 10 leaves");
-      console.log(JSON.stringify(lastLeaf, undefined, 2));
-
       let leafHash: string = lastLeaf[lastLeaf.length - 1].hash;
-      console.log("Last leaf's hash");
-      console.log(JSON.stringify(leafHash, undefined, 2));
-
       leafHash = leafHash.substr(2, leafHash.length);
-      console.log("LeafHash stripped");
-      console.log(lastLeaf);
 
       const leafHashBN = bigInt(leafHash, 16).toString();
-      console.log("LeafHashBN string");
-      console.log(leafHashBN);
 
       // @-->>> To re-create the commitment hash from the merkle tree, you will have to first
       //
@@ -1034,7 +1031,7 @@ export class ParticipantStack {
 
     let inp14 = new Uint8Array([...in1, ...in2, ...in3, ...in4]);
     let hash1 = new sha.sha256().update(inp14).digest("hex"); //create hex hash1 of commitment
-    console.log(hash1.slice(0, 32), hash1.slice(32, 64));
+    //console.log(hash1.slice(0, 32), hash1.slice(32, 64));
     let left1 = bigInt(hash1.slice(0, 32), 16).value; //create BigInt part of hash1
     let right1 = bigInt(hash1.slice(32, 64), 16).value; //create BigInt part of hash1
 
@@ -1046,7 +1043,7 @@ export class ParticipantStack {
 
     let inp58 = new Uint8Array([...in5, ...in6, ...in7, ...in8]);
     let hash2 = new sha.sha256().update(inp58).digest("hex"); //create hex hash2 of commitment
-    console.log(hash2.slice(0, 32), hash2.slice(32, 64));
+    //console.log(hash2.slice(0, 32), hash2.slice(32, 64));
     let left2 = bigInt(hash2.slice(0, 32), 16).value; //create BigInt part of hash2
     let right2 = bigInt(hash2.slice(32, 64), 16).value; //create BigInt part of hash2
 
@@ -1057,7 +1054,7 @@ export class ParticipantStack {
     let comar4 = bnToBuf("" + right2);
     let comarr = new Uint8Array([...comar1, ...comar2, ...comar3, ...comar4]);
     let hexhash = new sha.sha256().update(comarr).digest("hex");
-    console.log(hexhash.slice(0, 32), hexhash.slice(32, 64));
+    //console.log(hexhash.slice(0, 32), hexhash.slice(32, 64));
     let newcom1 = bigInt(hexhash.slice(0, 32), 16).value;
     let newcom2 = bigInt(hexhash.slice(32, 64), 16).value;
 

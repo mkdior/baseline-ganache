@@ -160,20 +160,6 @@ describe("baseline", () => {
 
         workgroup = bobApp.getWorkgroup();
         workgroupToken = bobApp.getWorkgroupToken();
-
-        //"0x0000000000000000000000000000000000000000000000000000000000004ef3",
-        //"0x0000000000000000000000000000000000000000000000000000000000000000"
-        console.log("MarhalCircuitArg");
-        console.log(
-          bobApp.marshalCircuitArg(
-            "0x0000000000000000000000000000000000000000000000000000000000004ef3"
-          )
-        );
-        console.log(
-          bobApp.marshalCircuitArg(
-            "0x0000000000000000000000000000000000000000000000000000000000000000"
-          )
-        );
       });
 
       it("should create the workgroup in the local registry", async () => {
@@ -338,6 +324,7 @@ describe("baseline", () => {
               job,
               commitmentMeta
             );
+
             commitments.push(commitment);
 
             // Ensure that during this workflow we have a reference to the current (single) job.
@@ -418,12 +405,9 @@ describe("baseline", () => {
               ),
             ]);
 
-            // Give time for event catching and database updates.
-            await promisedTimeout(2000);
-
-            const root = await bobApp.requestMgr(Mgr.Bob, "baseline_getRoot", [
+						const root = await bobApp.requestMgr(Mgr.Bob, "baseline_getRoot", [
               shieldAddress,
-            ]);
+            ]).then((res: any) => res.toString());
 
             assert(
               root.toString() !==
@@ -444,6 +428,9 @@ describe("baseline", () => {
               "Alice's merkle tree should not be empty after Bob's insertion."
             );
           });
+
+          // @TODO should ensure that Alice is able to rebuild commitment
+          // it(...
 
           it("should determine which suppliers to contact for the currently selected maintenance job", async () => {
             // reqExpander returns an array of all needed supplier types.
@@ -472,7 +459,7 @@ describe("baseline", () => {
           });
 
           // Send MJCont to Supplier
-          it("should send the initiating availability request to the supplers", async () => {
+          it("should send the initiating availability request to the suppliers", async () => {
             const uuid4 = require("uuid4");
             for (const [supplier, stype] of Object.entries(
               supplierTToAddressMap
@@ -507,8 +494,6 @@ describe("baseline", () => {
               bobApp.getAvailableSuppliers()
             );
 
-            console.log(`can start: ${canStart}`);
-
             assert(canStart);
           });
 
@@ -531,33 +516,8 @@ describe("baseline", () => {
               partitionSuppliers(condensedSuppliers)
             );
 
-            console.log(
-              `Overlap Container: \n ${JSON.stringify(
-                overlapContainer,
-                undefined,
-                2
-              )}`
-            );
-            console.log(`\n`);
-            console.log(
-              `Overlap Metadata: \n ${JSON.stringify(
-                overlapMetadata,
-                undefined,
-                2
-              )}`
-            );
-
             // Based on the available overlapping suppliers, generate unique sets.
             const uniqueSets = createUniqueSets(overlapContainer);
-
-            console.log(
-              `Generated unique sets: \n ${JSON.stringify(
-                uniqueSets,
-                undefined,
-                2
-              )}`
-            );
-            console.log(`\n`);
 
             // Time to get the optimal supplier set.
             //{
@@ -576,6 +536,110 @@ describe("baseline", () => {
             finalSelection = finalSet;
 
             assert(finalSelection.supplierSet.length >= 1);
+          });
+
+          it("should generate a selection commitment for each selected supplier", async () => {
+            // TODO:: Also notify the people NOT selected.
+            const selectedSuppliers = finalSelection.supplierSet;
+            const provider = new Eth.providers.JsonRpcProvider(
+              "http://0.0.0.0:8545"
+            );
+            const sender = (await provider.listAccounts())[2];
+
+            for (const supplier of selectedSuppliers) {
+              let currentLeaf = 0;
+              let currentHash = (
+                await bobApp.requestMgr(Mgr.Bob, "baseline_getCommit", [
+                  shieldAddress,
+                  currentLeaf,
+                ])
+              ).hash;
+
+              let convertedHash = bigInt(
+                currentHash.substr(2, currentHash.length),
+                16
+              ).toString();
+
+              const convertedA = convertedHash.substr(
+                0,
+                convertedHash.length / 2
+              );
+              const convertedB = convertedHash.substr(
+                convertedHash.length / 2,
+                convertedHash.length
+              );
+              const commitment = await bobApp.createCommitment(
+                maintenanceData[0],
+                {
+                  shieldAddr: commitmentMeta.shieldAddr,
+                  verifierAddr: commitmentMeta.verifierAddr,
+                  state: bigInt(++currentLeaf),
+                },
+                currentLeaf,
+                {
+                  id: maintenanceData[0].id,
+                  supplierID: bigInt(supplier.substr(2, supplier.length), 16),
+                  docHash1: bigInt(0),
+                  docHash2: bigInt(0),
+                  contractH1: bigInt(0),
+                  contractH2: bigInt(0),
+                }
+              );
+
+              const tempArgs = [
+                commitment?.state.toString(),
+                commitment?.mjID.toString(),
+                commitment?.supplierID.toString(),
+                "0",
+                "0",
+                "0",
+                "0",
+                convertedA,
+                convertedB,
+                commitment?.nc1.toString(),
+                commitment?.nc2.toString(),
+              ];
+
+              const tempProof = await bobApp.generateProof("genesis", {
+                args: tempArgs,
+              });
+
+              const tempProofFlat = flattenDeep([
+                ...tempProof.proof.proof.a,
+                ...tempProof.proof.proof.b,
+                ...tempProof.proof.proof.c,
+              ]).reduce(
+                (old: any, current: any): any[] => [...old, hexToDec(current)],
+                []
+              );
+
+              const tempProofFlatInputs = flattenDeep(
+                tempProof.proof.inputs
+              ).reduce(
+                (old: any, current: any): any[] => [...old, hexToDec(current)],
+                []
+              );
+
+              await bobApp
+                .requestMgr(Mgr.Bob, "baseline_verifyAndPush", [
+                  sender,
+                  shieldAddress,
+                  tempProofFlat,
+                  tempProofFlatInputs,
+                  concatenateThenHash(
+                    JSON.stringify(commitment, (_, key: any) =>
+                      typeof key === "bigint" ? key.toString() : key
+                    )
+                  ),
+                ])
+                .then(async (_: any) => {
+
+						});
+
+              currentLeaf = currentLeaf++;
+            }
+
+            assert(true);
           });
         });
       });

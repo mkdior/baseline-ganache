@@ -209,9 +209,9 @@ export const formatUniqueSets = (
     averageRating: number;
   }[] = [];
 
-  console.log(`\n------------------`);
-  console.log(`${JSON.stringify(mjReqs, undefined, 2)}`);
-  console.log(`------------------`);
+  // console.log(`\n------------------`);
+  // console.log(`${JSON.stringify(mjReqs, undefined, 2)}`);
+  // console.log(`------------------`);
 
   for (const supSet of uniqueSetIds) {
     // Each supSet contains multiple IDS of our needed suppliers
