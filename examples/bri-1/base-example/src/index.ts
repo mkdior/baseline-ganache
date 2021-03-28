@@ -1864,6 +1864,11 @@ export class ParticipantStack {
             userId: org["userId"],
           })
         );
+      })
+      .catch((err: any) => {
+        console.log(
+          `Something went wrong during organization setup. This is related to identity. \n Error details: ${err}`
+        );
       });
 
     if (this.org) {
