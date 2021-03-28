@@ -561,80 +561,81 @@ export class ParticipantStack {
             });
           });
         }
-			} else if (Object.keys(message_payload).includes("NS")) {
-				// If we're in this branch it means that we're trying to notify a supplier of the fact
-				// that he/she has been selected for the job. NS stands for `Notify Supplier`
+      } else if (Object.keys(message_payload).includes("NS")) {
+        // If we're in this branch it means that we're trying to notify a supplier of the fact
+        // that he/she has been selected for the job. NS stands for `Notify Supplier`
 
-				const vOI = message_payload.NS;
+        const vOI = message_payload.NS;
 
-				// NS -- Notify Selection contains a status which indicates whether you've been selected or not.
-				// If you are selected; it means that you've also been sent a proposal. This proposal has already
-				// been signed by the WF so we're now looking for the second signature from the supplier.
-				if (vOI.status === true) {
-					// Selected
-					console.log("Supplier has received acceptance.");
-					console.log(JSON.stringify(vOI, undefined, 2));
-					let signatures = vOI.signatures;
+        // NS -- Notify Selection contains a status which indicates whether you've been selected or not.
+        // If you are selected; it means that you've also been sent a proposal. This proposal has already
+        // been signed by the WF so we're now looking for the second signature from the supplier.
+        if (vOI.status === true) {
+          // Selected
+          console.log("Supplier has received acceptance.");
+          console.log(JSON.stringify(vOI, undefined, 2));
+          let signatures = vOI.signatures;
 
-					// Do some processing, verify the signature, either accept or reject the proposal
-					// As we're just testing, let's just accept it, sign it, and send it back.
-					let doubleSigned = concatenateThenHash(vOI.proposal, signatures[0]);
-					doubleSigned = doubleSigned.substr(2, doubleSigned.length);
+          // Do some processing, verify the signature, either accept or reject the proposal
+          // As we're just testing, let's just accept it, sign it, and send it back.
+          let doubleSigned = concatenateThenHash(vOI.proposal, signatures[0]);
+          doubleSigned = doubleSigned.substr(2, doubleSigned.length);
 
-					signatures.push((await this.signMessage(doubleSigned)).signature);
+          signatures.push((await this.signMessage(doubleSigned)).signature);
 
-					console.log(
-						`Supplier just double signed the proposal \n Signature: ${JSON.stringify(
-							signatures,
-							undefined,
-							2
-						)}`
-					);
+          console.log(
+            `Supplier just double signed the proposal \n Signature: ${JSON.stringify(
+              signatures,
+              undefined,
+              2
+            )}`
+          );
 
-					console.log(
-						`Address: ${vOI.selectedAddress} \n LeafIndex: ${vOI.leafIndex} \n SelectionRange: ${vOI.selectionRange}`
-					);
+          console.log(
+            `Address: ${vOI.selectedAddress} \n LeafIndex: ${vOI.leafIndex} \n SelectionRange: ${vOI.selectionRange}`
+          );
 
-					for (const address of this.getWorkgroupCounterparties()) {
-						this.sendProtocolMessage(address, Opcode.Availability, {
-							RN: {
-								initSignedDoc: vOI.proposal,
-								signatureCollection: JSON.stringify(signatures)
-							}
-						})
-					}
-				} else if (vOI.status === false){
-					// If we're in here, it means that we're a supplier AND that we haven't been chosen.
-					// @-->>> TODO: Handle denial case.
-					console.log("Supplier has received rejection.");
-				}
-			} else if (Object.keys(message_payload).includes("RN")) {
-				// RN stands for "Respond Notification". This field is entered when the Supplier responds to the
-				// WF's invitation/proposal message. @-->>> TODO: Also convert these in different opcodes.
+          for (const address of this.getWorkgroupCounterparties()) {
+            this.sendProtocolMessage(address, Opcode.Availability, {
+              RN: {
+                initSignedDoc: vOI.proposal,
+                signatureCollection: JSON.stringify(signatures),
+              },
+            });
+          }
+        } else if (vOI.status === false) {
+          // If we're in here, it means that we're a supplier AND that we haven't been chosen.
+          // @-->>> TODO: Handle denial case.
+          console.log("Supplier has received rejection.");
+        }
+      } else if (Object.keys(message_payload).includes("RN")) {
+        // RN stands for "Respond Notification". This field is entered when the Supplier responds to the
+        // WF's invitation/proposal message. @-->>> TODO: Also convert these in different opcodes.
 
-				// @-->>> TODO: Make sure that we have a backup set to fall back onto if one of the suppliers denies our proposal.
-				// @-->>> TODO: Wait for all suppliers in selection round to respond!
+        // @-->>> TODO: Make sure that we have a backup set to fall back onto if one of the suppliers denies our proposal.
+        // @-->>> TODO: Wait for all suppliers in selection round to respond!
 
-				const rea = message_payload.RN;
+        const rea = message_payload.RN;
 
-				// @-->>> TODO: Verify signatures etc..
-				const signatureSet = 
-					(typeof rea.signatureCollection === "string") 
-						? JSON.parse(rea.signatureCollection) 
-						: rea.signatureCollection; 
+        // @-->>> TODO: Verify signatures etc..
+        const signatureSet =
+          typeof rea.signatureCollection === "string"
+            ? JSON.parse(rea.signatureCollection)
+            : rea.signatureCollection;
 
-				// After verifying the signatures repack everything and get ready for creating a commitment.
-				// @-->>> TODO: Make sure that the commitments are made using the commitment manager.
-				const preBaselinedDocument = {
-					document: rea.initSignedDoc,
-					completeSetSignatures: JSON.stringify(signatureSet)
-				};
+        // After verifying the signatures repack everything and get ready for creating a commitment.
+        // @-->>> TODO: Make sure that the commitments are made using the commitment manager.
+        const preBaselinedDocument = {
+          document: rea.initSignedDoc,
+          completeSetSignatures: JSON.stringify(signatureSet),
+        };
 
-				const hashedDocument = (concatenateThenHash(preBaselinedDocument)).substr(2);
+        const hashedDocument = concatenateThenHash(preBaselinedDocument).substr(
+          2
+        );
 
-				console.log(`Baselining MSA \n Commitment: ${hashedDocument}`);
-
-			}
+        console.log(`Baselining MSA \n Commitment: ${hashedDocument}`);
+      }
     }
   }
 
