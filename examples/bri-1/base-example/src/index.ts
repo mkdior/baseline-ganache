@@ -567,33 +567,37 @@ export class ParticipantStack {
 
         const vOI = message_payload.NS;
 
+        // NS -- Notify Selection contains a status which indicates whether you've been selected or not.
+        // If you are selected; it means that you've also been sent a proposal. This proposal has already
+        // been signed by the WF so we're now looking for the second signature from the supplier.
+        if (vOI.status === true) {
+          // Selected
+          console.log("Acceptance message contains the following values");
+          console.log(JSON.stringify(vOI, undefined, 2));
+          let signatures = vOI.signatures;
 
-				// NS -- Notify Selection contains a status which indicates whether you've been selected or not. 
-				// If you are selected; it means that you've also been sent a proposal. This proposal has already
-				// been signed by the WF so we're now looking for the second signature from the supplier.
-				if (vOI.status === true) {
-					// Selected
-					console.log("Acceptance message contains the following values");
-					console.log(JSON.stringify(vOI, undefined, 2));
-					let signatures = vOI.signatures;
+          // Do some processing, verify the signature, either accept or reject the proposal
+          // As we're just testing, let's just accept it, sign it, and send it back.
+          let doubleSigned = concatenateThenHash(vOI.proposal, signatures[0]);
+          doubleSigned = doubleSigned.substr(2, doubleSigned.length);
 
-					// Do some processing, verify the signature, either accept or reject the proposal
-					// As we're just testing, let's just accept it, sign it, and send it back.
-					let doubleSigned = concatenateThenHash(
-						vOI.proposal,
-						signatures[0]
-					);
-					doubleSigned = doubleSigned.substr(2, doubleSigned.length);
+          signatures.push((await this.signMessage(doubleSigned)).signature);
 
-					signatures.push((await this.signMessage(doubleSigned)).signature);
+          console.log(
+            `Supplier just double signed the proposal \n Signature: ${JSON.stringify(
+              signatures,
+              undefined,
+              2
+            )}`
+          );
 
-					console.log(`Supplier just double signed the proposal \n Signature: ${JSON.stringify(signatures, undefined, 2)}`);
-					
-					// @-->>> TODO Hamza -- Actually do this... 
-					console.log("Send it back to initiator and store it in their local system.");
-				} else {
-					// Not selected
-				}
+          // @-->>> TODO Hamza -- Actually do this...
+          console.log(
+            "Send it back to initiator and store it in their local system."
+          );
+        } else {
+          // Not selected
+        }
 
         console.log(
           `Address: ${vOI.selectedAddress} \n LeafIndex: ${vOI.leafIndex} \n SelectionRange: ${vOI.selectionRange}`
@@ -978,7 +982,13 @@ export class ParticipantStack {
     verifierInp.nc1 = newcom1;
     verifierInp.nc2 = newcom2;
 
-		console.log(`Generated commitment data \n ${JSON.stringify(verifierInp, (_, key: any) => (typeof key === "bigint" ? key.toString() : key) , 2)}`);
+    console.log(
+      `Generated commitment data \n ${JSON.stringify(
+        verifierInp,
+        (_, key: any) => (typeof key === "bigint" ? key.toString() : key),
+        2
+      )}`
+    );
 
     return Promise.resolve(verifierInp); //contains all the right inputs for proof generation for verifier.sol, including the newly generated commitment.
   }
@@ -1284,12 +1294,12 @@ export class ParticipantStack {
   async signMessage(
     message: string,
     vaultId?: string,
-    keyId?: string,
+    keyId?: string
   ): Promise<any> {
-		if (!vaultId || !keyId) {
-			vaultId = (await this.requireVault()).id;
-			keyId = this.babyJubJub?.id;
-		}
+    if (!vaultId || !keyId) {
+      vaultId = (await this.requireVault()).id;
+      keyId = this.babyJubJub?.id;
+    }
 
     const orgToken = await this.createOrgToken();
     const token = orgToken.accessToken || orgToken.token;
@@ -1299,7 +1309,9 @@ export class ParticipantStack {
       this.baselineConfig?.vaultApiHost
     );
 
-		console.log(`Signing process: \n Vault ID: ${vaultId} \n Key ID: ${keyId} \n Message: ${message}`);
+    console.log(
+      `Signing process: \n Vault ID: ${vaultId} \n Key ID: ${keyId} \n Message: ${message}`
+    );
     return await vault.signMessage(vaultId || "", keyId || "", message);
   }
 
@@ -1974,7 +1986,7 @@ export class ParticipantStack {
       await this.signMessage(
         sha256(payload.toString()),
         vaults[0].id!,
-        this.hdwallet!.id!,
+        this.hdwallet!.id!
       )
     ).signature;
 

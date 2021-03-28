@@ -395,25 +395,25 @@ describe("baseline", () => {
               []
             );
 
-						const genesisHash = concatenateThenHash(
-							JSON.stringify(commitments[0], (_, key: any) =>
-								typeof key === "bigint" ? key.toString() : key
-							)
-              );
+            const genesisHash = concatenateThenHash(
+              JSON.stringify(commitments[0], (_, key: any) =>
+                typeof key === "bigint" ? key.toString() : key
+              )
+            );
 
-						console.log(`Genesis hash: ${genesisHash}`);
+            console.log(`Genesis hash: ${genesisHash}`);
 
             await bobApp.requestMgr(Mgr.Bob, "baseline_verifyAndPush", [
               sender,
               shieldAddress,
               proof,
               inputs,
-							genesisHash	
+              genesisHash,
             ]);
 
-						// Not sure, but for some reason this check sometimes fails even though I'm waiting for the
-						// transaction to be mined. Perhaps this is the extra delay between Ganache and commit-mgr.
-						await promisedTimeout(5000);
+            // Not sure, but for some reason this check sometimes fails even though I'm waiting for the
+            // transaction to be mined. Perhaps this is the extra delay between Ganache and commit-mgr.
+            await promisedTimeout(5000);
 
             const root = await bobApp
               .requestMgr(Mgr.Bob, "baseline_getRoot", [shieldAddress])
@@ -632,36 +632,42 @@ describe("baseline", () => {
                 []
               );
 
-							const selectionHash = concatenateThenHash(
-								JSON.stringify(selectionCommitment, (_, key: any) =>
-									typeof key === "bigint" ? key.toString() : key
-								)
-                );
+              const selectionHash = concatenateThenHash(
+                JSON.stringify(selectionCommitment, (_, key: any) =>
+                  typeof key === "bigint" ? key.toString() : key
+                )
+              );
 
-								console.log(`Selection hash: ${selectionHash}`);
+              console.log(`Selection hash: ${selectionHash}`);
 
               await bobApp.requestMgr(Mgr.Bob, "baseline_verifyAndPush", [
                 sender,
                 shieldAddress,
                 tempProofFlat,
                 tempProofFlatInputs,
-								selectionHash
+                selectionHash,
               ]);
 
-							// Prepare some information for the selection party. Using this information said party can
-							// verify its current state/participation. Also add a signed proposal.
-							let signatures: string[] = [];
-							const singleSignedProp = {hello: "world"};
-							const messageHash = concatenateThenHash(singleSignedProp);
-							signatures.push((await bobApp.signMessage(messageHash.substr(2, messageHash.length))).signature);
+              // Prepare some information for the selection party. Using this information said party can
+              // verify its current state/participation. Also add a signed proposal.
+              let signatures: string[] = [];
+              const singleSignedProp = { hello: "world" };
+              const messageHash = concatenateThenHash(singleSignedProp);
+              signatures.push(
+                (
+                  await bobApp.signMessage(
+                    messageHash.substr(2, messageHash.length)
+                  )
+                ).signature
+              );
 
               sSuppliersMeta.push({
                 leafIndex: currentLeaf,
                 selectionRange: [1, selectedSuppliers.length],
                 selectedAddress: supplier,
-								proposal: JSON.stringify(singleSignedProp),
-								signatures: signatures,
-								status: true
+                proposal: JSON.stringify(singleSignedProp),
+                signatures: signatures,
+                status: true,
               });
 
               currentLeaf = currentLeaf++;
@@ -674,18 +680,22 @@ describe("baseline", () => {
           });
 
           it("should notify the suppliers' selection status", async () => {
-          //    The supplier can rebuild the commitment for verification purposes
-          //    in the following format:
-          //
-          //    Job,
-          //    { shieldAddr, verifierAddr, 1 },
-          // 		message.leafIndex,
-          //    { Job.id, bigInt(myAddress, 16), bigInt(0), bigInt(0), bigInt(0), bigInt(0) }
+            //    The supplier can rebuild the commitment for verification purposes
+            //    in the following format:
+            //
+            //    Job,
+            //    { shieldAddr, verifierAddr, 1 },
+            // 		message.leafIndex,
+            //    { Job.id, bigInt(myAddress, 16), bigInt(0), bigInt(0), bigInt(0), bigInt(0) }
 
-          // @TODO -->>> Hamza -- Create new OpCode for notifying other parties.
-						for (const supplier of sSuppliersMeta) {
-							await bobApp.sendProtocolMessage(supplier.selectedAddress, Opcode.Availability, { NS: supplier });
-						}
+            // @TODO -->>> Hamza -- Create new OpCode for notifying other parties.
+            for (const supplier of sSuppliersMeta) {
+              await bobApp.sendProtocolMessage(
+                supplier.selectedAddress,
+                Opcode.Availability,
+                { NS: supplier }
+              );
+            }
           });
         });
       });
