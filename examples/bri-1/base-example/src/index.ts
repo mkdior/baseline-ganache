@@ -1691,7 +1691,7 @@ export class ParticipantStack {
           if (this.capabilities?.getBaselineRegistryContracts()) {
             resolve();
           }
-        }, 2500);
+        }, 250);
       })
     );
 
@@ -1721,7 +1721,7 @@ export class ParticipantStack {
             .catch((err) => {
               reject(err);
             });
-        }, 5000);
+        }, 2500);
       })
     );
 
@@ -1741,7 +1741,7 @@ export class ParticipantStack {
           if (this.workgroup) {
             resolve();
           }
-        }, 2500);
+        }, 3500);
       })
     );
 
@@ -1764,7 +1764,7 @@ export class ParticipantStack {
               resolve();
             })
             .catch((_) => {});
-        }, 5000);
+        }, 250);
       })
     );
 
