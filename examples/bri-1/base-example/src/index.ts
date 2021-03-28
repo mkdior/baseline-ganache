@@ -715,6 +715,8 @@ export class ParticipantStack {
 
     // @TODO::Hamza Remove this once #299 has been merged
     //this.baselineCircuitSetupArtifacts = invite.prvd.data.params.zk_data;
+		
+		console.log("Shield address Alice: " + shieldAddr);
 
     const trackedShield = await this.requestMgr(Mgr.Alice, "baseline_track", [
       shieldAddr,
@@ -787,6 +789,7 @@ export class ParticipantStack {
         if (res.status !== 200) {
           return Promise.reject(res.error || "Status on request was NOT 200");
         }
+				if (method === "baseline_track") console.log(JSON.stringify(res, undefined, 2));
         try {
           const result = JSON.parse(res.text).result;
 
@@ -1691,7 +1694,7 @@ export class ParticipantStack {
           if (this.capabilities?.getBaselineRegistryContracts()) {
             resolve();
           }
-        }, 250);
+        }, 500);
       })
     );
 
@@ -1721,7 +1724,7 @@ export class ParticipantStack {
             .catch((err) => {
               reject(err);
             });
-        }, 2500);
+        }, 3500);
       })
     );
 
@@ -1764,7 +1767,7 @@ export class ParticipantStack {
               resolve();
             })
             .catch((_) => {});
-        }, 250);
+        }, 500);
       })
     );
 
