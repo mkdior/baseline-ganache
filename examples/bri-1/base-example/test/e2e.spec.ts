@@ -395,17 +395,25 @@ describe("baseline", () => {
               []
             );
 
+						const genesisHash = concatenateThenHash(
+							JSON.stringify(commitments[0], (_, key: any) =>
+								typeof key === "bigint" ? key.toString() : key
+							)
+              );
+
+						console.log(`Genesis hash: ${genesisHash}`);
+
             await bobApp.requestMgr(Mgr.Bob, "baseline_verifyAndPush", [
               sender,
               shieldAddress,
               proof,
               inputs,
-              concatenateThenHash(
-                JSON.stringify(commitments[0], (_, key: any) =>
-                  typeof key === "bigint" ? key.toString() : key
-                )
-              ),
+							genesisHash	
             ]);
+
+						// Not sure, but for some reason this check sometimes fails even though I'm waiting for the
+						// transaction to be mined. Perhaps this is the extra delay between Ganache and commit-mgr.
+						await promisedTimeout(5000);
 
             const root = await bobApp
               .requestMgr(Mgr.Bob, "baseline_getRoot", [shieldAddress])
@@ -566,18 +574,20 @@ describe("baseline", () => {
                 0,
                 convertedHash.length / 2
               );
+
               const convertedB = convertedHash.substr(
                 convertedHash.length / 2,
                 convertedHash.length
               );
-              const commitment = await bobApp.createCommitment(
+
+              const selectionCommitment = await bobApp.createCommitment(
                 maintenanceData[0],
                 {
                   shieldAddr: commitmentMeta.shieldAddr,
                   verifierAddr: commitmentMeta.verifierAddr,
                   state: bigInt(1),
                 },
-                currentLeaf,
+                1,
                 {
                   id: maintenanceData[0].id,
                   supplierID: bigInt(supplier.substr(2, supplier.length), 16),
@@ -589,17 +599,17 @@ describe("baseline", () => {
               );
 
               const tempArgs = [
-                commitment?.state.toString(),
-                commitment?.mjID.toString(),
-                commitment?.supplierID.toString(),
+                selectionCommitment?.state.toString(),
+                selectionCommitment?.mjID.toString(),
+                selectionCommitment?.supplierID.toString(),
                 "0",
                 "0",
                 "0",
                 "0",
                 convertedA,
                 convertedB,
-                commitment?.nc1.toString(),
-                commitment?.nc2.toString(),
+                selectionCommitment?.nc1.toString(),
+                selectionCommitment?.nc2.toString(),
               ];
 
               const tempProof = await bobApp.generateProof("genesis", {
@@ -622,22 +632,36 @@ describe("baseline", () => {
                 []
               );
 
+							const selectionHash = concatenateThenHash(
+								JSON.stringify(selectionCommitment, (_, key: any) =>
+									typeof key === "bigint" ? key.toString() : key
+								)
+                );
+
+								console.log(`Selection hash: ${selectionHash}`);
+
               await bobApp.requestMgr(Mgr.Bob, "baseline_verifyAndPush", [
                 sender,
                 shieldAddress,
                 tempProofFlat,
                 tempProofFlatInputs,
-                concatenateThenHash(
-                  JSON.stringify(commitment, (_, key: any) =>
-                    typeof key === "bigint" ? key.toString() : key
-                  )
-                ),
+								selectionHash
               ]);
+
+							// Prepare some information for the selection party. Using this information said party can
+							// verify its current state/participation. Also add a signed proposal.
+							let signatures: string[] = [];
+							const singleSignedProp = {hello: "world"};
+							const messageHash = concatenateThenHash(singleSignedProp);
+							signatures.push((await bobApp.signMessage(messageHash.substr(2, messageHash.length))).signature);
 
               sSuppliersMeta.push({
                 leafIndex: currentLeaf,
                 selectionRange: [1, selectedSuppliers.length],
                 selectedAddress: supplier,
+								proposal: JSON.stringify(singleSignedProp),
+								signatures: signatures,
+								status: true
               });
 
               currentLeaf = currentLeaf++;
@@ -659,11 +683,9 @@ describe("baseline", () => {
           //    { Job.id, bigInt(myAddress, 16), bigInt(0), bigInt(0), bigInt(0), bigInt(0) }
 
           // @TODO -->>> Hamza -- Create new OpCode for notifying other parties.
-          for (const supplier of sSuppliersMeta) {
-          await bobApp.sendProtocolMessage(supplier.selectedAddress, Opcode.Availability, {
-          NS: supplier
-          });
-          }
+						for (const supplier of sSuppliersMeta) {
+							await bobApp.sendProtocolMessage(supplier.selectedAddress, Opcode.Availability, { NS: supplier });
+						}
           });
         });
       });

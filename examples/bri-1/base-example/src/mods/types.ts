@@ -80,6 +80,9 @@ export interface SelectionMetaData {
 	leafIndex: number;
 	selectionRange: readonly [number, number];
 	selectedAddress: string;	
+	proposal: string;
+	signatures: string[];
+	status: boolean;
 }
 
 export interface VerifierInterface {
