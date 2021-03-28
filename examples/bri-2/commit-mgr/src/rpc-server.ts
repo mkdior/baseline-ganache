@@ -229,6 +229,7 @@ const baseline_track = new jayson.Method(
 
     const contractAddress = args[0];
     const merkleTree = await merkleTrees.findOne({ _id: `${contractAddress}_0` });
+
     if (merkleTree && merkleTree.active === true) {
       error = {
         code: -32603,
