@@ -715,7 +715,7 @@ export class ParticipantStack {
 
     // @TODO::Hamza Remove this once #299 has been merged
     //this.baselineCircuitSetupArtifacts = invite.prvd.data.params.zk_data;
-		
+
     const trackedShield = await this.requestMgr(Mgr.Alice, "baseline_track", [
       shieldAddr,
     ])
@@ -726,15 +726,23 @@ export class ParticipantStack {
         console.log(
           `Alice: Something went wrong trying to track the shield contract. \n Trying to retrieve trees and see if we're already tracking.`
         );
-				const trackedShields = await this.requestMgr(Mgr.Alice, "baseline_getTracked", []);
+        const trackedShields = await this.requestMgr(
+          Mgr.Alice,
+          "baseline_getTracked",
+          []
+        );
 
-				if (trackedShields.length === 0) {
-					console.log(`No tracked shields in the database. \n Additional error information: ${err}`)
-        	return undefined;
-				} else {
-					console.log(`Found a lingering tracked shield in the database. All is good. Please ignore the previous messages.`);
-					return trackedShields[0];
-				}
+        if (trackedShields.length === 0) {
+          console.log(
+            `No tracked shields in the database. \n Additional error information: ${err}`
+          );
+          return undefined;
+        } else {
+          console.log(
+            `Found a lingering tracked shield in the database. All is good. Please ignore the previous messages.`
+          );
+          return trackedShields[0];
+        }
       });
 
     if (!trackedShield) {
@@ -1878,9 +1886,9 @@ export class ParticipantStack {
 
       await this.registerWorkgroupOrganization();
     } else {
-			// @-->>> TODO: Check why we're sometimes coming in here.
-			throw('Something went wrong while trying to setup an organization.');
-		}
+      // @-->>> TODO: Check why we're sometimes coming in here.
+      throw "Something went wrong while trying to setup an organization.";
+    }
 
     return this.org;
   }
